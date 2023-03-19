@@ -34,11 +34,6 @@ func run() (err error) {
 		return fmt.Errorf("finding current branch: %w", err)
 	}
 
-	fmt.Println("Fetching...")
-	if err := fetch(); err != nil {
-		return fmt.Errorf("fetching from the remote: %w", err)
-	}
-
 	hasMaster := slices.Contains(branches, "master")
 	hasMain := slices.Contains(branches, "main")
 	if hasMaster && hasMain {
@@ -56,9 +51,12 @@ func run() (err error) {
 		}
 	}
 
-	fmt.Printf("Checking out and pulling %s...\n", targetBranch)
+	fmt.Printf("Fetching (and pruning), checking out '%s', and pulling updates from the remote...\n", targetBranch)
 	if err := checkout(targetBranch); err != nil {
 		return fmt.Errorf("checking out %s: %w", targetBranch, err)
+	}
+	if err := fetch(true); err != nil {
+		return fmt.Errorf("fetching (and pruning): %w", err)
 	}
 	if err := pull(); err != nil {
 		return fmt.Errorf("pulling: %w", err)
@@ -129,8 +127,15 @@ func currentBranch() (string, error) {
 	return strings.TrimSpace(string(bs)), nil
 }
 
-func fetch() error {
-	err := exec.Command("git", "fetch").Run()
+func fetch(prune bool) error {
+	var cmd *exec.Cmd
+	if prune {
+		cmd = exec.Command("git", "fetch", "--prune")
+	} else {
+		cmd = exec.Command("git", "fetch")
+	}
+
+	err := cmd.Run()
 	if err != nil {
 		return fmt.Errorf("running `git fetch`: %w", err)
 	}

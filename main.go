@@ -28,6 +28,7 @@ type state struct {
 }
 
 // TODO: Handle the graph of branches. In particular, if b -> a -> master, make sure that a is rebased onto master and then b is rebased onto a.
+// TODO: More gracefully handle errors: abort the rebase and revert the branches.
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Fatal error: %v.\n", err)

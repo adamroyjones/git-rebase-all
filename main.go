@@ -145,12 +145,13 @@ func worktrees() ([]worktree, error) {
 
 		before, directory, ok := strings.Cut(lines[0], " ")
 		if !ok || before != "worktree" {
-			return nil, errors.New(`expected text in the form "worktree <dir>"`)
+			// TODO: Add more error-handling for the case wehere the head is detatched.
+			return nil, fmt.Errorf(`expected text in the form "worktree <dir>"; found "%s"`, lines[0])
 		}
 
 		before, branchRef, ok := strings.Cut(lines[2], " ")
 		if !ok || before != "branch" {
-			return nil, errors.New(`expected text in the form "branch <ref>"`)
+			return nil, fmt.Errorf(`expected text in the form "branch <ref>"; found "%s"`, lines[2])
 		}
 
 		branchComponents := strings.Split(branchRef, "/")

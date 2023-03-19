@@ -10,6 +10,8 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+// TODO: Handle worktrees.
+// TODO: Handle the graph of branches. In particular, if b -> a -> master, make sure that a is rebased onto master and then b is rebased onto a.
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Fatal error: %v.\n", err)
@@ -92,7 +94,6 @@ func run() (err error) {
 		}
 	}
 
-	// TODO: Handle worktrees.
 	return nil
 }
 

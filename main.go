@@ -156,10 +156,10 @@ func worktrees() ([]worktree, error) {
 		}
 
 		branchComponents := strings.Split(branchRef, "/")
-		if d := len(branchComponents); d != 3 {
-			return nil, fmt.Errorf("expected 3 branch components (e.g. refs/heads/master); found %d", d)
+		if d := len(branchComponents); d < 3 {
+			return nil, fmt.Errorf("expected at least 3 branch components (e.g. refs/heads/master); found %d", d)
 		}
-		branch := branchComponents[2]
+		branch := strings.Join(branchComponents[2:], "/")
 
 		out[i] = worktree{directory: directory, branch: branch}
 	}

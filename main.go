@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
-
-	"golang.org/x/exp/slices"
 )
 
 type worktree struct {

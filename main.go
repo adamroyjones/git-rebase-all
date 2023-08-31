@@ -48,6 +48,10 @@ func run() (err error) {
 	defer func() { err = s.restore(err) }()
 
 	fmt.Printf("Fetching, pruning, and updating '%s'...\n", s.targetBranch)
+	if err := fetch(true); err != nil {
+		return fmt.Errorf("fetching and pruning: %w", err)
+	}
+
 	if err := s.updateTargetBranch(); err != nil {
 		return fmt.Errorf("updating target branch (%s): %w", s.targetBranch, err)
 	}

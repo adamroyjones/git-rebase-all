@@ -193,14 +193,10 @@ func currentBranch() (string, error) {
 }
 
 func (s *state) currentStateIsWorktree() bool {
-	for _, w := range s.worktrees {
+	return slices.ContainsFunc(s.worktrees, func(w worktree) bool {
 		// TODO: Make the directory check more robust.
-		if strings.HasPrefix(s.currentState.directory, w.directory) && s.currentState.branch == w.branch {
-			return true
-		}
-	}
-
-	return false
+		return strings.HasPrefix(s.currentState.directory, w.directory) && s.currentState.branch == w.branch
+	})
 }
 
 func (s *state) updateTargetBranch() error {

@@ -48,7 +48,7 @@ func run() (err error) {
 	defer func() { err = s.restore(err) }()
 
 	fmt.Printf("Fetching, pruning, and updating '%s'...\n", s.targetBranch)
-	if err := fetch(true); err != nil {
+	if err := fetch(); err != nil {
 		return fmt.Errorf("fetching and pruning: %w", err)
 	}
 
@@ -281,16 +281,8 @@ BranchLoop:
 	return nil
 }
 
-func fetch(prune bool) error {
-	var cmd *exec.Cmd
-	if prune {
-		cmd = exec.Command("git", "fetch", "--prune")
-	} else {
-		cmd = exec.Command("git", "fetch")
-	}
-
-	err := cmd.Run()
-	if err != nil {
+func fetch() error {
+	if err := exec.Command("git", "fetch", "--prune").Run(); err != nil {
 		return fmt.Errorf("running `git fetch`: %w", err)
 	}
 

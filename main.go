@@ -9,21 +9,14 @@ import (
 	"strings"
 )
 
-type worktree struct {
-	directory string
-	branch    string
-}
-
-type currentState struct {
-	directory string
-	branch    string
-}
+type worktree struct{ dir, branch string }
 
 type state struct {
-	worktrees    []worktree
-	currentState currentState
-	branches     []string
-	targetBranch string
+	worktrees     []worktree
+	branches      []string
+	currentDir    string
+	currentBranch string
+	targetBranch  string
 }
 
 // TODO: Handle the graph of branches. In particular, if b -> a -> master, make sure that a is rebased onto master and then b is rebased onto a.
@@ -91,7 +84,7 @@ func newState() (*state, error) {
 
 	if !slices.ContainsFunc(worktrees, func(w worktree) bool {
 		// TODO: Make the directory check more robust.
-		return strings.HasPrefix(currentDirectory, w.directory) && currentBranch == w.branch
+		return strings.HasPrefix(currentDirectory, w.dir) && currentBranch == w.branch
 	}) {
 		return nil, fmt.Errorf("unable to find the current directory (%s) and branch (%s) amongst the worktrees (%+v)", currentDirectory, currentBranch, worktrees)
 	}
@@ -107,9 +100,10 @@ func newState() (*state, error) {
 	}
 
 	s := state{
-		worktrees:    worktrees,
-		currentState: currentState{directory: currentDirectory, branch: currentBranch},
-		branches:     branches,
+		worktrees:     worktrees,
+		branches:      branches,
+		currentDir:    currentDirectory,
+		currentBranch: currentBranch,
 	}
 
 	if hasMain {
@@ -155,7 +149,7 @@ func worktrees() ([]worktree, error) {
 		}
 		branch := strings.Join(branchComponents[2:], "/")
 
-		out[i] = worktree{directory: directory, branch: branch}
+		out[i] = worktree{dir: directory, branch: branch}
 	}
 
 	return out, nil
@@ -201,13 +195,13 @@ func (s *state) updateTargetBranch() error {
 			return fmt.Errorf("checking out %s: %w", s.targetBranch, err)
 		}
 	} else {
-		if err := os.Chdir(targetWorktree.directory); err != nil {
-			return fmt.Errorf("changing to %s: %w", targetWorktree.directory, err)
+		if err := os.Chdir(targetWorktree.dir); err != nil {
+			return fmt.Errorf("changing to %s: %w", targetWorktree.dir, err)
 		}
 	}
 
 	if err := pull(); err != nil {
-		return fmt.Errorf("pulling from %s: %w", targetWorktree.directory, err)
+		return fmt.Errorf("pulling from %s: %w", targetWorktree.dir, err)
 	}
 
 	if err := s.restore(); err != nil {
@@ -229,7 +223,7 @@ func (s *state) updateWorktreeBranches() error {
 	for i, w := range worktreesToUpdate {
 		fmt.Printf("  %s [%d/%d]...\n", w.branch, i+1, len(worktreesToUpdate))
 
-		if err := os.Chdir(w.directory); err != nil {
+		if err := os.Chdir(w.dir); err != nil {
 			return err
 		}
 
@@ -309,10 +303,10 @@ func abortRebase() error {
 }
 
 func (s *state) restore() error {
-	if err := os.Chdir(s.currentState.directory); err != nil {
+	if err := os.Chdir(s.currentDir); err != nil {
 		return err
 	}
-	if err := checkout(s.currentState.branch); err != nil {
+	if err := checkout(s.currentBranch); err != nil {
 		return err
 	}
 	return nil

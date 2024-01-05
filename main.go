@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -162,13 +164,12 @@ func branches() ([]string, error) {
 		return nil, fmt.Errorf("running `git branch`: %w", err)
 	}
 
-	s := string(bs)
-	ss := strings.Split(strings.TrimSpace(s), "\n")
-	for i := range ss {
-		ss[i] = strings.TrimSpace(ss[i])
+	branches := []string{}
+	scanner := bufio.NewScanner(bytes.NewReader(bs))
+	for scanner.Scan() {
+		branches = append(branches, strings.TrimSpace(scanner.Text()))
 	}
-
-	return ss, nil
+	return branches, nil
 }
 
 func currentBranch() (string, error) {

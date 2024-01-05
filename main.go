@@ -222,7 +222,6 @@ func (s *state) updateWorktreeBranches() error {
 
 	for i, w := range worktreesToUpdate {
 		fmt.Printf("  %s [%d/%d]...\n", w.branch, i+1, len(worktreesToUpdate))
-
 		if err := os.Chdir(w.dir); err != nil {
 			return err
 		}
@@ -237,21 +236,14 @@ func (s *state) updateWorktreeBranches() error {
 
 func (s *state) updateNonworktreeBranches() error {
 	branchesToUpdate := make([]string, 0, len(s.branches))
-
-BranchLoop:
 	for _, b := range s.branches {
-		for _, w := range s.worktrees {
-			if w.branch == b {
-				continue BranchLoop
-			}
+		if !slices.ContainsFunc(s.worktrees, func(w worktree) bool { return w.branch == b }) {
+			branchesToUpdate = append(branchesToUpdate, b)
 		}
-
-		branchesToUpdate = append(branchesToUpdate, b)
 	}
 
 	for i, b := range branchesToUpdate {
 		fmt.Printf("  %s [%d/%d]...\n", b, i+1, len(branchesToUpdate))
-
 		if err := checkout(b); err != nil {
 			return err
 		}
@@ -268,7 +260,6 @@ func fetch() error {
 	if err := exec.Command("git", "fetch", "--prune").Run(); err != nil {
 		return fmt.Errorf("running `git fetch`: %w", err)
 	}
-
 	return nil
 }
 

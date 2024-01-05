@@ -189,12 +189,10 @@ func branches() ([]string, error) {
 }
 
 func currentBranch() (string, error) {
-	cmd := exec.Command("git", "branch", "--show-current")
-	bs, err := cmd.CombinedOutput()
+	bs, err := exec.Command("git", "branch", "--show-current").CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("running `git branch`: %w", err)
 	}
-
 	return strings.TrimSpace(string(bs)), nil
 }
 
@@ -292,40 +290,32 @@ func fetch() error {
 }
 
 func checkout(branch string) error {
-	bs, err := exec.Command("git", "checkout", branch).CombinedOutput()
-	msg := strings.TrimSpace(string(bs))
-	pwd, _ := os.Getwd()
-	if err != nil {
+	if bs, err := exec.Command("git", "checkout", branch).CombinedOutput(); err != nil {
+		msg := strings.TrimSpace(string(bs))
+		pwd, _ := os.Getwd()
 		return fmt.Errorf("running `git checkout %s` (message: %s, pwd: %s): %w", branch, msg, pwd, err)
 	}
-
 	return nil
 }
 
 func pull() error {
-	err := exec.Command("git", "pull").Run()
-	if err != nil {
+	if err := exec.Command("git", "pull").Run(); err != nil {
 		return fmt.Errorf("running `git pull`: %w", err)
 	}
-
 	return nil
 }
 
 func rebase(targetBranch string) error {
-	err := exec.Command("git", "rebase", targetBranch).Run()
-	if err != nil {
+	if err := exec.Command("git", "rebase", targetBranch).Run(); err != nil {
 		return fmt.Errorf("running `git rebase %s`: %w", targetBranch, err)
 	}
-
 	return nil
 }
 
 func abortRebase() error {
-	err := exec.Command("git", "rebase", "--abort").Run()
-	if err != nil {
+	if err := exec.Command("git", "rebase", "--abort").Run(); err != nil {
 		return fmt.Errorf("running `git rebase --abort`: %w", err)
 	}
-
 	return nil
 }
 

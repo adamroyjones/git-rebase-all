@@ -69,40 +69,42 @@ func run() (err error) {
 	return nil
 }
 
-func newState() (state, error) {
-	s := state{}
-	var err error
-	s.worktrees, err = worktrees()
+func newState() (*state, error) {
+	worktrees, err := worktrees()
 	if err != nil {
-		return s, fmt.Errorf("fetching and parsing worktrees: %w", err)
+		return nil, fmt.Errorf("fetching and parsing worktrees: %w", err)
 	}
 
-	s.branches, err = branches()
+	branches, err := branches()
 	if err != nil {
-		return s, fmt.Errorf("finding current branches: %w", err)
+		return nil, fmt.Errorf("finding current branches: %w", err)
 	}
 
 	currentBranch, err := currentBranch()
 	if err != nil {
-		return s, fmt.Errorf("finding current branch: %w", err)
+		return nil, fmt.Errorf("finding current branch: %w", err)
 	}
 
 	currentDirectory, err := os.Getwd()
 	if err != nil {
-		return s, fmt.Errorf("fetching current directory: %w", err)
+		return nil, fmt.Errorf("fetching current directory: %w", err)
 	}
 
-	s.currentState = currentState{directory: currentDirectory, branch: currentBranch}
+	s := state{
+		worktrees:    worktrees,
+		currentState: currentState{directory: currentDirectory, branch: currentBranch},
+		branches:     branches,
+	}
 
-	// This should always be true, but it's a sanity check.
+	// This should always be true.
 	if !s.currentStateIsWorktree() {
-		return s, fmt.Errorf("current state (%+v) not in the worktrees (%+v)", s.currentState, s.worktrees)
+		return nil, fmt.Errorf("current state (%+v) not in the worktrees (%+v)", s.currentState, s.worktrees)
 	}
 
 	hasMaster := slices.Contains(s.branches, "master")
 	hasMain := slices.Contains(s.branches, "main")
 	if hasMaster && hasMain {
-		return s, errors.New("unexpected situation: the branch has both `master` and `main` branches")
+		return nil, errors.New("unexpected situation: the branch has both `master` and `main` branches")
 	}
 
 	s.targetBranch = "master"
@@ -110,7 +112,7 @@ func newState() (state, error) {
 		s.targetBranch = "main"
 	}
 
-	return s, nil
+	return &s, nil
 }
 
 func worktrees() ([]worktree, error) {

@@ -27,7 +27,7 @@ type state struct {
 }
 
 // TODO: Handle the graph of branches. In particular, if b -> a -> master, make sure that a is rebased onto master and then b is rebased onto a.
-// TODO: More gracefully handle errors: abort the rebase and revert the branches.
+// TODO: More gracefully handle errors: abort the rebase and revert the branch?
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Fatal error: %v.\n", err)
@@ -36,7 +36,7 @@ func main() {
 }
 
 func run() (err error) {
-	if !isGitDirectory() {
+	if exec.Command("git", "rev-parse", "--is-inside-work-tree").Run() != nil {
 		return errors.New("command is not being run from a Git directory")
 	}
 
@@ -67,12 +67,6 @@ func run() (err error) {
 	}
 
 	return nil
-}
-
-func isGitDirectory() bool {
-	cmd := exec.Command("git", "rev-parse", "--is-inside-work-tree")
-	err := cmd.Run()
-	return err == nil
 }
 
 func newState() (state, error) {

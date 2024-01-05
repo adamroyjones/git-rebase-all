@@ -97,7 +97,10 @@ func newState() (*state, error) {
 	}
 
 	// This should always be true.
-	if !s.currentStateIsWorktree() {
+	if !slices.ContainsFunc(s.worktrees, func(w worktree) bool {
+		// TODO: Make the directory check more robust.
+		return strings.HasPrefix(s.currentState.directory, w.directory) && s.currentState.branch == w.branch
+	}) {
 		return nil, fmt.Errorf("current state (%+v) not in the worktrees (%+v)", s.currentState, s.worktrees)
 	}
 
@@ -190,13 +193,6 @@ func currentBranch() (string, error) {
 	}
 
 	return strings.TrimSpace(string(bs)), nil
-}
-
-func (s *state) currentStateIsWorktree() bool {
-	return slices.ContainsFunc(s.worktrees, func(w worktree) bool {
-		// TODO: Make the directory check more robust.
-		return strings.HasPrefix(s.currentState.directory, w.directory) && s.currentState.branch == w.branch
-	})
 }
 
 func (s *state) updateTargetBranch() error {

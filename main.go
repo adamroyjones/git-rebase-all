@@ -286,13 +286,6 @@ func rebase(targetBranch string) error {
 	return nil
 }
 
-func abortRebase() error {
-	if err := exec.Command("git", "rebase", "--abort").Run(); err != nil {
-		return fmt.Errorf("running `git rebase --abort`: %w", err)
-	}
-	return nil
-}
-
 func (s *state) restore() error {
 	if err := os.Chdir(s.currentDir); err != nil {
 		return err

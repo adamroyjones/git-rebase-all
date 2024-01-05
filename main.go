@@ -128,19 +128,8 @@ func worktrees() ([]worktree, error) {
 		return nil, fmt.Errorf("running `git branch`: %w", err)
 	}
 
-	s := string(bs)
-	ws := strings.Split(s, "\n\n")
-	// Remove any empty lines.
-	{
-		i := 0
-		for _, w := range ws {
-			if strings.TrimSpace(ws[i]) != "" {
-				ws[i] = w
-				i++
-			}
-		}
-		ws = ws[:i]
-	}
+	ws := strings.Split(string(bs), "\n\n")
+	slices.DeleteFunc(ws, func(s string) bool { return s == "" })
 
 	out := make([]worktree, len(ws))
 	for i, w := range ws {
@@ -151,7 +140,7 @@ func worktrees() ([]worktree, error) {
 
 		before, directory, ok := strings.Cut(lines[0], " ")
 		if !ok || before != "worktree" {
-			// TODO: Add more error-handling for the case wehere the head is detatched.
+			// TODO: Add more error-handling for the case where HEAD is detatched.
 			return nil, fmt.Errorf(`expected text in the form "worktree <dir>"; found "%s"`, lines[0])
 		}
 

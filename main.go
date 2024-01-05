@@ -44,7 +44,6 @@ func run() (err error) {
 	if err != nil {
 		return fmt.Errorf("constructing state struct: %w", err)
 	}
-
 	defer func() { err = s.restore(err) }()
 
 	fmt.Printf("Fetching, pruning, and updating '%s'...\n", s.targetBranch)
@@ -90,26 +89,29 @@ func newState() (*state, error) {
 		return nil, fmt.Errorf("fetching current directory: %w", err)
 	}
 
+	if !slices.ContainsFunc(worktrees, func(w worktree) bool {
+		// TODO: Make the directory check more robust.
+		return strings.HasPrefix(currentDirectory, w.directory) && currentBranch == w.branch
+	}) {
+		return nil, fmt.Errorf("unable to find the current directory (%s) and branch (%s) amongst the worktrees (%+v)", currentDirectory, currentBranch, worktrees)
+	}
+
+	// TODO: Make this more robust. There's nothing special about these names.
+	hasMaster := slices.Contains(branches, "master")
+	hasMain := slices.Contains(branches, "main")
+	if hasMaster && hasMain {
+		return nil, errors.New("unexpected situation: the branch has both `master` and `main` branches")
+	}
+	if !hasMaster && !hasMain {
+		return nil, errors.New("unexpected situation: the branch has neither `master` nor `main` branches")
+	}
+
 	s := state{
 		worktrees:    worktrees,
 		currentState: currentState{directory: currentDirectory, branch: currentBranch},
 		branches:     branches,
 	}
 
-	// This should always be true.
-	if !slices.ContainsFunc(s.worktrees, func(w worktree) bool {
-		// TODO: Make the directory check more robust.
-		return strings.HasPrefix(s.currentState.directory, w.directory) && s.currentState.branch == w.branch
-	}) {
-		return nil, fmt.Errorf("current state (%+v) not in the worktrees (%+v)", s.currentState, s.worktrees)
-	}
-
-	// TODO: Make this more robust. There's nothing special about these names.
-	hasMaster := slices.Contains(s.branches, "master")
-	hasMain := slices.Contains(s.branches, "main")
-	if hasMaster && hasMain {
-		return nil, errors.New("unexpected situation: the branch has both `master` and `main` branches")
-	}
 	if hasMain {
 		s.targetBranch = "main"
 	} else {

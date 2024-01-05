@@ -44,7 +44,7 @@ func run() (err error) {
 	if err != nil {
 		return fmt.Errorf("constructing state struct: %w", err)
 	}
-	defer func() { err = s.restore(err) }()
+	defer func() { err = errors.Join(err, s.restore()) }()
 
 	fmt.Printf("Fetching, pruning, and updating '%s'...\n", s.targetBranch)
 	if err := fetch(); err != nil {
@@ -210,7 +210,7 @@ func (s *state) updateTargetBranch() error {
 		return fmt.Errorf("pulling from %s: %w", targetWorktree.directory, err)
 	}
 
-	if err := s.restore(nil); err != nil {
+	if err := s.restore(); err != nil {
 		return fmt.Errorf("restoring to the current state: %w", err)
 	}
 
@@ -308,12 +308,12 @@ func abortRebase() error {
 	return nil
 }
 
-func (s *state) restore(err error) error {
-	if chdirErr := os.Chdir(s.currentState.directory); chdirErr != nil {
-		return errors.Join(err, chdirErr)
+func (s *state) restore() error {
+	if err := os.Chdir(s.currentState.directory); err != nil {
+		return err
 	}
-	if checkoutErr := checkout(s.currentState.branch); checkoutErr != nil {
-		return errors.Join(err, checkoutErr)
+	if err := checkout(s.currentState.branch); err != nil {
+		return err
 	}
-	return err
+	return nil
 }

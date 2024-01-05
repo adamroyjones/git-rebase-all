@@ -104,15 +104,16 @@ func newState() (*state, error) {
 		return nil, fmt.Errorf("current state (%+v) not in the worktrees (%+v)", s.currentState, s.worktrees)
 	}
 
+	// TODO: Make this more robust. There's nothing special about these names.
 	hasMaster := slices.Contains(s.branches, "master")
 	hasMain := slices.Contains(s.branches, "main")
 	if hasMaster && hasMain {
 		return nil, errors.New("unexpected situation: the branch has both `master` and `main` branches")
 	}
-
-	s.targetBranch = "master"
 	if hasMain {
 		s.targetBranch = "main"
+	} else {
+		s.targetBranch = "master"
 	}
 
 	return &s, nil

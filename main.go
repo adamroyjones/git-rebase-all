@@ -44,25 +44,28 @@ func run() (err error) {
 	}
 
 	fmt.Printf("Fetching, pruning, and updating '%s'...\n", s.targetBranch)
-	if err := fetch(); err != nil {
+	if err := fetch(s.currentDir); err != nil {
 		return fmt.Errorf("fetching and pruning: %w", err)
 	}
 	defer func() { err = errors.Join(err, s.restore()) }()
 
-	// TODO: Detach each worktree's HEAD first and restore the state at the end.
-	if err := s.updateTargetBranch(); err != nil {
-		return fmt.Errorf("updating target branch (%s): %w", s.targetBranch, err)
+	if err := s.detachAllHEADS(); err != nil {
+		return fmt.Errorf("failed to detach the HEAD for each worktree: %w", err)
 	}
 
 	// TODO: Build a graph of branches.
 	for _, branch := range s.branches {
-		children, err := branchChildren(branch)
+		children, err := branchChildren(s.currentDir, branch)
 		if err != nil {
 			return err
 		}
 		for _, child := range children {
 			fmt.Printf("%s -> %s\n", branch, child)
 		}
+	}
+
+	if err := s.updateTargetBranch(); err != nil {
+		return fmt.Errorf("updating target branch (%s): %w", s.targetBranch, err)
 	}
 
 	fmt.Println("Updating worktree branches...")
@@ -79,12 +82,17 @@ func run() (err error) {
 }
 
 func newState(targetBranch string) (*state, error) {
+	currentDirectory, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("fetching current directory: %w", err)
+	}
+
 	worktrees, err := worktrees()
 	if err != nil {
 		return nil, fmt.Errorf("fetching and parsing worktrees: %w", err)
 	}
 
-	branches, err := branches()
+	branches, err := branches(currentDirectory)
 	if err != nil {
 		return nil, fmt.Errorf("finding current branches: %w", err)
 	}
@@ -101,14 +109,9 @@ func newState(targetBranch string) (*state, error) {
 		return nil, errors.New("no branch was specified and unable to find master or main")
 	}
 
-	currentBranch, err := currentBranch()
+	currentBranch, err := currentBranch(currentDirectory)
 	if err != nil {
 		return nil, fmt.Errorf("finding current branch: %w", err)
-	}
-
-	currentDirectory, err := os.Getwd()
-	if err != nil {
-		return nil, fmt.Errorf("fetching current directory: %w", err)
 	}
 
 	if !slices.ContainsFunc(worktrees, func(w worktree) bool {
@@ -127,6 +130,15 @@ func newState(targetBranch string) (*state, error) {
 	}, nil
 }
 
+func (s *state) detachAllHEADS() error {
+	for _, w := range s.worktrees {
+		if err := detachHEAD(w.dir); err != nil {
+			return fmt.Errorf("failed to the detach the HEAD (worktree directory: %s): %w", w.dir, err)
+		}
+	}
+	return nil
+}
+
 func (s *state) updateTargetBranch() error {
 	targetBranchIsWorktree := false
 	var targetWorktree worktree
@@ -137,24 +149,22 @@ func (s *state) updateTargetBranch() error {
 		}
 	}
 
+	// TODO: Remove this check, since you'll be first detaching all of the HEADs?
+	var dir string
 	if targetBranchIsWorktree {
-		if err := os.Chdir(targetWorktree.dir); err != nil {
-			return fmt.Errorf("changing to %s: %w", targetWorktree.dir, err)
-		}
+		dir = targetWorktree.dir
 	} else {
-		if err := checkout(s.targetBranch); err != nil {
+		if err := checkout(s.currentDir, s.targetBranch); err != nil {
 			return fmt.Errorf("checking out %s: %w", s.targetBranch, err)
 		}
+		dir = s.currentDir
 	}
 
-	if err := pull(); err != nil {
-		dir, getwdErr := os.Getwd()
-		if err != nil {
-			return fmt.Errorf("pulling: %w; failed to get the pwd: %w", err, getwdErr)
-		}
+	if err := pull(dir); err != nil {
 		return fmt.Errorf("pulling from %s: %w", dir, err)
 	}
 
+	// TODO: Do I need this here anymore?
 	if err := s.restore(); err != nil {
 		return fmt.Errorf("restoring to the current state: %w", err)
 	}
@@ -173,11 +183,7 @@ func (s *state) updateWorktreeBranches() error {
 
 	for i, w := range worktreesToUpdate {
 		fmt.Printf("  %s [%d/%d]...\n", w.branch, i+1, len(worktreesToUpdate))
-		if err := os.Chdir(w.dir); err != nil {
-			return err
-		}
-
-		if err := rebase(s.targetBranch); err != nil {
+		if err := rebase(w.dir, s.targetBranch); err != nil {
 			return err
 		}
 	}
@@ -195,11 +201,11 @@ func (s *state) updateNonworktreeBranches() error {
 
 	for i, b := range branchesToUpdate {
 		fmt.Printf("  %s [%d/%d]...\n", b, i+1, len(branchesToUpdate))
-		if err := checkout(b); err != nil {
+		if err := checkout(s.currentDir, b); err != nil {
 			return err
 		}
 
-		if err := rebase(s.targetBranch); err != nil {
+		if err := rebase(s.currentDir, s.targetBranch); err != nil {
 			return err
 		}
 	}
@@ -207,13 +213,12 @@ func (s *state) updateNonworktreeBranches() error {
 	return nil
 }
 
-// TODO: Change restore to restore each of the worktrees.
 func (s *state) restore() error {
-	if err := os.Chdir(s.currentDir); err != nil {
-		return err
+	for _, w := range s.worktrees {
+		if err := checkout(w.dir, w.branch); err != nil {
+			return fmt.Errorf("restoring the worktree (directory: %s, branch: %s): checking out: %w", w.dir, w.branch, err)
+		}
 	}
-	if err := checkout(s.currentBranch); err != nil {
-		return err
-	}
+
 	return nil
 }

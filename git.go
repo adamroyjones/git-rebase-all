@@ -4,14 +4,15 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"os"
 	"os/exec"
 	"slices"
 	"strings"
 )
 
-func branches() ([]string, error) {
-	bs, err := exec.Command("git", "branch", "--format=%(refname:short)").CombinedOutput()
+func branches(dir string) ([]string, error) {
+	cmd := exec.Command("git", "branch", "--format=%(refname:short)")
+	cmd.Dir = dir
+	bs, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("running `git branch`: %w", err)
 	}
@@ -24,8 +25,10 @@ func branches() ([]string, error) {
 	return branches, nil
 }
 
-func branchChildren(branch string) ([]string, error) {
-	bs, err := exec.Command("git", "branch", "--contains", branch, "--format=%(refname:short)").CombinedOutput()
+func branchChildren(dir, branch string) ([]string, error) {
+	cmd := exec.Command("git", "branch", "--contains", branch, "--format=%(refname:short)")
+	cmd.Dir = dir
+	bs, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("unable to list the branches that contain %s: %w", branch, err)
 	}
@@ -42,39 +45,66 @@ func branchChildren(branch string) ([]string, error) {
 	return out, nil
 }
 
-func checkout(branch string) error {
-	if bs, err := exec.Command("git", "checkout", branch).CombinedOutput(); err != nil {
+func checkout(dir, branch string) error {
+	cmd := exec.Command("git", "checkout", branch)
+	cmd.Dir = dir
+	if bs, err := cmd.CombinedOutput(); err != nil {
 		msg := strings.TrimSpace(string(bs))
-		pwd, _ := os.Getwd()
-		return fmt.Errorf("running `git checkout %s` (message: %s, pwd: %s): %w", branch, msg, pwd, err)
+		return fmt.Errorf("running `git checkout %s` (message: %s, dir: %s): %w", branch, msg, dir, err)
 	}
 	return nil
 }
 
-func currentBranch() (string, error) {
-	bs, err := exec.Command("git", "branch", "--show-current").CombinedOutput()
+func currentBranch(dir string) (string, error) {
+	cmd := exec.Command("git", "branch", "--show-current")
+	cmd.Dir = dir
+	bs, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("running `git branch`: %w", err)
 	}
 	return strings.TrimSpace(string(bs)), nil
 }
 
-func fetch() error {
-	if err := exec.Command("git", "fetch", "--prune").Run(); err != nil {
+func detachHEAD(dir string) error {
+	cmd := exec.Command("git", "rev-parse", "HEAD")
+	cmd.Dir = dir
+	bs, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("determining the commit SHA (directory: %s): %w", dir, err)
+	}
+
+	sha := strings.TrimSpace(string(bs))
+	cmd = exec.Command("git", "checkout", sha)
+	cmd.Dir = dir
+	bs, err = cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("detaching the HEAD (directory: %s): %w (output: %s)", dir, err, strings.TrimSpace(string(bs)))
+	}
+	return nil
+}
+
+func fetch(dir string) error {
+	cmd := exec.Command("git", "fetch", "--prune")
+	cmd.Dir = dir
+	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("running `git fetch`: %w", err)
 	}
 	return nil
 }
 
-func pull() error {
-	if err := exec.Command("git", "pull").Run(); err != nil {
+func pull(dir string) error {
+	cmd := exec.Command("git", "pull")
+	cmd.Dir = dir
+	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("running `git pull`: %w", err)
 	}
 	return nil
 }
 
-func rebase(targetBranch string) error {
-	if err := exec.Command("git", "rebase", targetBranch).Run(); err != nil {
+func rebase(dir, targetBranch string) error {
+	cmd := exec.Command("git", "rebase", targetBranch)
+	cmd.Dir = dir
+	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("running `git rebase %s`: %w", targetBranch, err)
 	}
 	return nil

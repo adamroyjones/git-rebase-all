@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"os/exec"
@@ -29,11 +30,15 @@ func main() {
 }
 
 func run() (err error) {
+	var targetBranch string
+	flag.StringVar(&targetBranch, "b", "", "The branch onto which to rebase; defaults first to main, then to master, if unspecified.")
+	flag.Parse()
+
 	if exec.Command("git", "rev-parse", "--is-inside-work-tree").Run() != nil {
 		return errors.New("the program is not being run from a Git directory")
 	}
 
-	s, err := newState()
+	s, err := newState(targetBranch)
 	if err != nil {
 		return fmt.Errorf("constructing state struct: %w", err)
 	}
@@ -72,7 +77,7 @@ func run() (err error) {
 	return nil
 }
 
-func newState() (*state, error) {
+func newState(targetBranch string) (*state, error) {
 	worktrees, err := worktrees()
 	if err != nil {
 		return nil, fmt.Errorf("fetching and parsing worktrees: %w", err)
@@ -81,6 +86,18 @@ func newState() (*state, error) {
 	branches, err := branches()
 	if err != nil {
 		return nil, fmt.Errorf("finding current branches: %w", err)
+	}
+	if targetBranch != "" && !slices.Contains(branches, targetBranch) {
+		return nil, fmt.Errorf("the specified branch %q could not be found", targetBranch)
+	}
+	if targetBranch == "" && slices.Contains(branches, "main") {
+		targetBranch = "main"
+	}
+	if targetBranch == "" && slices.Contains(branches, "master") {
+		targetBranch = "master"
+	}
+	if targetBranch == "" {
+		return nil, errors.New("no branch was specified and unable to find master or main")
 	}
 
 	currentBranch, err := currentBranch()
@@ -100,30 +117,13 @@ func newState() (*state, error) {
 		return nil, fmt.Errorf("unable to find the current directory (%s) and branch (%s) amongst the worktrees (%+v)", currentDirectory, currentBranch, worktrees)
 	}
 
-	// TODO: Make this more robust. There's nothing special about these names.
-	hasMaster := slices.Contains(branches, "master")
-	hasMain := slices.Contains(branches, "main")
-	if hasMaster && hasMain {
-		return nil, errors.New("unexpected situation: the branch has both `master` and `main` branches")
-	}
-	if !hasMaster && !hasMain {
-		return nil, errors.New("unexpected situation: the branch has neither `master` nor `main` branches")
-	}
-
-	s := state{
+	return &state{
 		worktrees:     worktrees,
 		branches:      branches,
 		currentDir:    currentDirectory,
 		currentBranch: currentBranch,
-	}
-
-	if hasMain {
-		s.targetBranch = "main"
-	} else {
-		s.targetBranch = "master"
-	}
-
-	return &s, nil
+		targetBranch:  targetBranch,
+	}, nil
 }
 
 func (s *state) updateTargetBranch() error {

@@ -48,6 +48,17 @@ func run() (err error) {
 		return fmt.Errorf("updating target branch (%s): %w", s.targetBranch, err)
 	}
 
+	// TODO: Build a graph of branches.
+	for _, branch := range s.branches {
+		children, err := branchChildren(branch)
+		if err != nil {
+			return err
+		}
+		for _, child := range children {
+			fmt.Printf("%s -> %s\n", branch, child)
+		}
+	}
+
 	fmt.Println("Updating worktree branches...")
 	if err := s.updateWorktreeBranches(); err != nil {
 		return fmt.Errorf("updating worktree branches: %w", err)

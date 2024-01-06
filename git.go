@@ -24,6 +24,24 @@ func branches() ([]string, error) {
 	return branches, nil
 }
 
+func branchChildren(branch string) ([]string, error) {
+	bs, err := exec.Command("git", "branch", "--contains", branch, "--format=%(refname:short)").CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("unable to list the branches that contain %s: %w", branch, err)
+	}
+
+	lines := strings.Split(string(bs), "\n")
+	out := make([]string, 0, len(lines))
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || line == branch {
+			continue
+		}
+		out = append(out, line)
+	}
+	return out, nil
+}
+
 func checkout(branch string) error {
 	if bs, err := exec.Command("git", "checkout", branch).CombinedOutput(); err != nil {
 		msg := strings.TrimSpace(string(bs))

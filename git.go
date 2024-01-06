@@ -11,8 +11,7 @@ import (
 )
 
 func branches() ([]string, error) {
-	cmd := exec.Command("git", "branch", "--format=%(refname:short)")
-	bs, err := cmd.CombinedOutput()
+	bs, err := exec.Command("git", "branch", "--format=%(refname:short)").CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("running `git branch`: %w", err)
 	}

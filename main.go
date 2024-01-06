@@ -122,19 +122,18 @@ func (s *state) updateTargetBranch() error {
 	var targetWorktree worktree
 	for _, w := range s.worktrees {
 		if w.branch == s.targetBranch {
-			targetBranchIsWorktree = true
-			targetWorktree = w
+			targetBranchIsWorktree, targetWorktree = true, w
 			break
 		}
 	}
 
-	if !targetBranchIsWorktree {
-		if err := checkout(s.targetBranch); err != nil {
-			return fmt.Errorf("checking out %s: %w", s.targetBranch, err)
-		}
-	} else {
+	if targetBranchIsWorktree {
 		if err := os.Chdir(targetWorktree.dir); err != nil {
 			return fmt.Errorf("changing to %s: %w", targetWorktree.dir, err)
+		}
+	} else {
+		if err := checkout(s.targetBranch); err != nil {
+			return fmt.Errorf("checking out %s: %w", s.targetBranch, err)
 		}
 	}
 

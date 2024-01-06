@@ -71,7 +71,7 @@ func worktrees() ([]worktree, error) {
 	}
 
 	ws := strings.Split(string(bs), "\n\n")
-	slices.DeleteFunc(ws, func(s string) bool { return s == "" })
+	ws = slices.DeleteFunc(ws, func(s string) bool { return s == "" })
 
 	out := make([]worktree, len(ws))
 	for i, w := range ws {

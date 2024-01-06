@@ -101,14 +101,29 @@ func pull(dir string) error {
 	return nil
 }
 
-// TODO: If this fails, you should abort the rebase.
 func rebase(dir, targetBranch string) error {
 	cmd := exec.Command("git", "rebase", targetBranch)
 	cmd.Dir = dir
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("running `git rebase %s`: %w", targetBranch, err)
+	bs, err := cmd.CombinedOutput()
+	if err == nil {
+		return nil
 	}
-	return nil
+
+	output := strings.TrimSpace(string(bs))
+	cmd = exec.Command("git", "rebase", "--abort")
+	cmd.Dir = dir
+	abortBs, abortErr := cmd.CombinedOutput()
+	if abortErr == nil {
+		return fmt.Errorf(
+			"failed to rebase %q, but successfully aborted: %w (output: %s)",
+			targetBranch, err, output,
+		)
+	}
+	abortOutput := strings.TrimSpace(string(abortBs))
+	return fmt.Errorf(
+		"failed to rebase %q: %w (output: %s); failed to abort: %w (output: %s)",
+		targetBranch, err, output, abortErr, abortOutput,
+	)
 }
 
 func worktrees() ([]worktree, error) {

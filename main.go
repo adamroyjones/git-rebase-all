@@ -78,7 +78,7 @@ func run() (err error) {
 func newState(targetBranch string) (*state, error) {
 	currentDirectory, err := os.Getwd()
 	if err != nil {
-		return nil, fmt.Errorf("fetching current directory: %w", err)
+		return nil, fmt.Errorf("fetching the current directory: %w", err)
 	}
 
 	worktrees, err := worktrees()
@@ -90,6 +90,7 @@ func newState(targetBranch string) (*state, error) {
 	if err != nil {
 		return nil, fmt.Errorf("finding current branches: %w", err)
 	}
+
 	if targetBranch != "" && !slices.Contains(branches, targetBranch) {
 		return nil, fmt.Errorf("the specified branch %q could not be found", targetBranch)
 	}

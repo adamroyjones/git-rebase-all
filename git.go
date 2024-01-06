@@ -101,6 +101,7 @@ func pull(dir string) error {
 	return nil
 }
 
+// TODO: If this fails, you should abort the rebase.
 func rebase(dir, targetBranch string) error {
 	cmd := exec.Command("git", "rebase", targetBranch)
 	cmd.Dir = dir

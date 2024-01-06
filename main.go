@@ -68,14 +68,9 @@ func run() (err error) {
 		return fmt.Errorf("updating target branch (%s): %w", s.targetBranch, err)
 	}
 
-	fmt.Println("Updating worktree branches...")
-	if err := s.updateWorktreeBranches(); err != nil {
+	fmt.Println("Updating branches...")
+	if err := s.updateBranches(); err != nil {
 		return fmt.Errorf("updating worktree branches: %w", err)
-	}
-
-	fmt.Println("Updating non-worktree branches...")
-	if err := s.updateNonworktreeBranches(); err != nil {
-		return fmt.Errorf("updating non-worktree branches: %w", err)
 	}
 
 	return nil
@@ -140,76 +135,26 @@ func (s *state) detachAllHEADS() error {
 }
 
 func (s *state) updateTargetBranch() error {
-	targetBranchIsWorktree := false
-	var targetWorktree worktree
-	for _, w := range s.worktrees {
-		if w.branch == s.targetBranch {
-			targetBranchIsWorktree, targetWorktree = true, w
-			break
-		}
+	if err := checkout(s.currentDir, s.targetBranch); err != nil {
+		return fmt.Errorf("checking out the target branch (dir: %s, branch: %s): %w", s.currentDir, s.targetBranch, err)
 	}
-
-	// TODO: Remove this check, since you'll be first detaching all of the HEADs?
-	var dir string
-	if targetBranchIsWorktree {
-		dir = targetWorktree.dir
-	} else {
-		if err := checkout(s.currentDir, s.targetBranch); err != nil {
-			return fmt.Errorf("checking out %s: %w", s.targetBranch, err)
-		}
-		dir = s.currentDir
+	if err := pull(s.currentDir); err != nil {
+		return fmt.Errorf("pulling from %s: %w", s.currentDir, err)
 	}
-
-	if err := pull(dir); err != nil {
-		return fmt.Errorf("pulling from %s: %w", dir, err)
-	}
-
-	// TODO: Do I need this here anymore?
-	if err := s.restore(); err != nil {
-		return fmt.Errorf("restoring to the current state: %w", err)
-	}
-
 	return nil
 }
 
-func (s *state) updateWorktreeBranches() error {
-	worktreesToUpdate := make([]worktree, 0, len(s.worktrees))
-	for _, w := range s.worktrees {
-		if w.branch != s.targetBranch {
-			worktreesToUpdate = append(worktreesToUpdate, w)
-			continue
-		}
-	}
-
-	for i, w := range worktreesToUpdate {
-		fmt.Printf("  %s [%d/%d]...\n", w.branch, i+1, len(worktreesToUpdate))
-		if err := rebase(w.dir, s.targetBranch); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (s *state) updateNonworktreeBranches() error {
-	branchesToUpdate := make([]string, 0, len(s.branches))
-	for _, b := range s.branches {
-		if !slices.ContainsFunc(s.worktrees, func(w worktree) bool { return w.branch == b }) {
-			branchesToUpdate = append(branchesToUpdate, b)
-		}
-	}
-
-	for i, b := range branchesToUpdate {
-		fmt.Printf("  %s [%d/%d]...\n", b, i+1, len(branchesToUpdate))
+// TODO: Make use the graph here once you've constructed it properly.
+func (s *state) updateBranches() error {
+	for i, b := range s.branches {
+		fmt.Printf("%s [%d/%d]...\n", b, i+1, len(s.branches))
 		if err := checkout(s.currentDir, b); err != nil {
 			return err
 		}
-
 		if err := rebase(s.currentDir, s.targetBranch); err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 
@@ -219,6 +164,5 @@ func (s *state) restore() error {
 			return fmt.Errorf("restoring the worktree (directory: %s, branch: %s): checking out: %w", w.dir, w.branch, err)
 		}
 	}
-
 	return nil
 }

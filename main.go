@@ -138,7 +138,11 @@ func (s *state) updateTargetBranch() error {
 	}
 
 	if err := pull(); err != nil {
-		return fmt.Errorf("pulling from %s: %w", targetWorktree.dir, err)
+		dir, getwdErr := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("pulling: %w; failed to get the pwd: %w", err, getwdErr)
+		}
+		return fmt.Errorf("pulling from %s: %w", dir, err)
 	}
 
 	if err := s.restore(); err != nil {

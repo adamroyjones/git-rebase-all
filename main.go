@@ -42,7 +42,7 @@ func run() (err error) {
 		return fmt.Errorf("constructing state struct: %w", err)
 	}
 
-	fmt.Printf("Fetching, pruning, and updating '%s'...\n", s.targetBranch)
+	fmt.Println("Fetching and pruning...")
 	if err := fetch(s.currentDir); err != nil {
 		return fmt.Errorf("fetching and pruning: %w", err)
 	}
@@ -63,6 +63,7 @@ func run() (err error) {
 		}
 	}
 
+	fmt.Printf("Updating %q...\n", s.targetBranch)
 	if err := s.updateTargetBranch(); err != nil {
 		return fmt.Errorf("updating target branch (%s): %w", s.targetBranch, err)
 	}

@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"slices"
-	"strings"
 )
 
 type worktree struct{ dir, branch string }
@@ -107,13 +106,6 @@ func newState(targetBranch string) (*state, error) {
 	currentBranch, err := currentBranch(currentDirectory)
 	if err != nil {
 		return nil, fmt.Errorf("finding current branch: %w", err)
-	}
-
-	if !slices.ContainsFunc(worktrees, func(w worktree) bool {
-		// TODO: Make the directory check more robust.
-		return strings.HasPrefix(currentDirectory, w.dir) && currentBranch == w.branch
-	}) {
-		return nil, fmt.Errorf("unable to find the current directory (%s) and branch (%s) amongst the worktrees (%+v)", currentDirectory, currentBranch, worktrees)
 	}
 
 	return &state{

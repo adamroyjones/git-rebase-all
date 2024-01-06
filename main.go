@@ -42,13 +42,14 @@ func run() (err error) {
 	if err != nil {
 		return fmt.Errorf("constructing state struct: %w", err)
 	}
-	defer func() { err = errors.Join(err, s.restore()) }()
 
 	fmt.Printf("Fetching, pruning, and updating '%s'...\n", s.targetBranch)
 	if err := fetch(); err != nil {
 		return fmt.Errorf("fetching and pruning: %w", err)
 	}
+	defer func() { err = errors.Join(err, s.restore()) }()
 
+	// TODO: Detach each worktree's HEAD first and restore the state at the end.
 	if err := s.updateTargetBranch(); err != nil {
 		return fmt.Errorf("updating target branch (%s): %w", s.targetBranch, err)
 	}
@@ -206,6 +207,7 @@ func (s *state) updateNonworktreeBranches() error {
 	return nil
 }
 
+// TODO: Change restore to restore each of the worktrees.
 func (s *state) restore() error {
 	if err := os.Chdir(s.currentDir); err != nil {
 		return err

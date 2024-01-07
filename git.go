@@ -59,16 +59,6 @@ func checkout(dir, branch string) error {
 	return nil
 }
 
-func currentBranch(dir string) (string, error) {
-	cmd := exec.Command("git", "branch", "--show-current")
-	cmd.Dir = dir
-	bs, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("running `git branch`: %w", err)
-	}
-	return strings.TrimSpace(string(bs)), nil
-}
-
 func decapitate(dir string) error {
 	cmd := exec.Command("git", "rev-parse", "HEAD")
 	cmd.Dir = dir

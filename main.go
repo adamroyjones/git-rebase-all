@@ -17,12 +17,11 @@ const minGitMajorVersion, minGitMinorVersion = 2, 38
 type worktree struct{ dir, branch string }
 
 type state struct {
-	worktrees     []worktree
-	branches      []string
-	leaves        []string
-	currentDir    string
-	currentBranch string
-	targetBranch  string
+	worktrees    []worktree
+	branches     []string
+	leaves       []string
+	currentDir   string
+	targetBranch string
 }
 
 func main() {
@@ -165,17 +164,11 @@ func newState(targetBranch string) (*state, error) {
 		return nil, errors.New("no branch was specified and main and master could not be found")
 	}
 
-	currentBranch, err := currentBranch(currentDir)
-	if err != nil {
-		return nil, fmt.Errorf("finding current branch: %w", err)
-	}
-
 	return &state{
-		worktrees:     worktrees,
-		branches:      branches,
-		currentDir:    currentDir,
-		currentBranch: currentBranch,
-		targetBranch:  targetBranch,
+		worktrees:    worktrees,
+		branches:     branches,
+		currentDir:   currentDir,
+		targetBranch: targetBranch,
 	}, nil
 }
 

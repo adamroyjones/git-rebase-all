@@ -10,11 +10,9 @@ import (
 	"strings"
 )
 
-const (
-	version            = "0.0.1"
-	minGitMajorVersion = 2
-	minGitMinorVersion = 38
-)
+const version = "0.0.1"
+
+const minGitMajorVersion, minGitMinorVersion = 2, 38
 
 type worktree struct{ dir, branch string }
 

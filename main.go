@@ -9,6 +9,8 @@ import (
 	"slices"
 )
 
+const version = "0.0.1"
+
 type worktree struct{ dir, branch string }
 
 type state struct {
@@ -21,17 +23,49 @@ type state struct {
 }
 
 func main() {
-	if err := run(); err != nil {
+	flag.Usage = func() {
+		fmt.Fprintln(os.Stderr, `git-rebase-all: Rebase all branches across all worktrees.
+
+Usage:
+  Rebase onto a specified branch.
+    git-rebase-all -b foo
+
+  Rebase onto main if it exists, or master if that exists.
+    git-rebse-all
+
+  Print version information and exit
+    git-rebase-all -v
+
+Details:
+  This program expects Git 2.38+ to be used.
+
+  This program will update the target branch, collect all 'leaf' branches (that
+  is, branches that are not reachable from any other branch), and rebase each
+  leaf branch onto the (now-updated) target branch. The updates are performed
+  with "git rebase --update-refs".
+
+  See github.com/adamroyjones/git-rebase-all.`)
+	}
+
+	var targetBranch string
+	var v bool
+	flag.BoolVar(&v, "v", false, "Print version information and exit.")
+	flag.StringVar(&targetBranch, "b", "", "The branch onto which to rebase; defaults first to main, then to master, if unspecified.")
+	flag.Parse()
+
+	if v {
+		fmt.Println("git-rebase-all " + version)
+		os.Exit(0)
+	}
+
+	if err := run(targetBranch); err != nil {
 		fmt.Fprintf(os.Stderr, "Fatal error: %v.\n", err)
 		os.Exit(1)
 	}
 }
 
-func run() (err error) {
-	var targetBranch string
-	flag.StringVar(&targetBranch, "b", "", "The branch onto which to rebase; defaults first to main, then to master, if unspecified.")
-	flag.Parse()
-
+func run(targetBranch string) (err error) {
+	// TODO: Validate the version of git, first.
 	if exec.Command("git", "rev-parse", "--is-inside-work-tree").Run() != nil {
 		return errors.New("the program is not being run from a Git directory")
 	}

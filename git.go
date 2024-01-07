@@ -132,18 +132,18 @@ func rebase(dir, targetBranch string) error {
 }
 
 func worktrees() ([]worktree, error) {
-	cmd := exec.Command("git", "worktree", "list", "--porcelain")
+	cmd := exec.Command("git", "worktree", "list", "--porcelain", "-z")
 	bs, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("running `git branch`: %w", err)
 	}
 
-	ws := strings.Split(string(bs), "\n\n")
+	ws := strings.Split(string(bs), "\x00\x00")
 	ws = slices.DeleteFunc(ws, func(s string) bool { return s == "" })
 
 	out := make([]worktree, len(ws))
 	for i, w := range ws {
-		lines := strings.Split(w, "\n")
+		lines := strings.Split(w, "\x00")
 		if d := len(lines); d != 3 {
 			return nil, fmt.Errorf("expected worktree %d to have 3 lines; found %d", i, d)
 		}

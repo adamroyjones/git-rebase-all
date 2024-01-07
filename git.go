@@ -148,24 +148,25 @@ func worktrees() ([]worktree, error) {
 			return nil, fmt.Errorf("expected worktree %d to have 3 lines; found %d", i, d)
 		}
 
-		before, directory, ok := strings.Cut(lines[0], " ")
+		before, dir, ok := strings.Cut(lines[0], " ")
 		if !ok || before != "worktree" {
 			// TODO: Add more error-handling for the case where HEAD is detatched.
-			return nil, fmt.Errorf(`expected text in the form "worktree <dir>"; found "%s"`, lines[0])
+			return nil, fmt.Errorf(`expected text in the form "worktree <dir>"; found %q`, lines[0])
 		}
 
 		before, branchRef, ok := strings.Cut(lines[2], " ")
 		if !ok || before != "branch" {
-			return nil, fmt.Errorf(`expected text in the form "branch <ref>"; found "%s"`, lines[2])
+			return nil, fmt.Errorf(`expected text in the form "branch <ref>"; found %q (dir: %s)`, lines[2], dir)
 		}
 
+		// TODO: Can we use Git instead to reformat this?
 		branchComponents := strings.Split(branchRef, "/")
 		if d := len(branchComponents); d < 3 {
 			return nil, fmt.Errorf("expected at least 3 branch components (e.g. refs/heads/master); found %d", d)
 		}
 		branch := strings.Join(branchComponents[2:], "/")
 
-		out[i] = worktree{dir: directory, branch: branch}
+		out[i] = worktree{dir: dir, branch: branch}
 	}
 
 	return out, nil

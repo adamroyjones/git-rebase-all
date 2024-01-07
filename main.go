@@ -42,7 +42,9 @@ func run() (err error) {
 		return fmt.Errorf("constructing state struct: %w", err)
 	}
 
-	// TODO: Check for any unstaged changes before proceeding.
+	if err := s.unstagedChanges(); err != nil {
+		return fmt.Errorf("verifying that there are no unstaged changes: %w", err)
+	}
 
 	fmt.Println("Fetching and pruning...")
 	if err := fetch(s.currentDir); err != nil {
@@ -112,6 +114,19 @@ func newState(targetBranch string) (*state, error) {
 		currentBranch: currentBranch,
 		targetBranch:  targetBranch,
 	}, nil
+}
+
+func (s *state) unstagedChanges() error {
+	for _, w := range s.worktrees {
+		out, err := status(w.dir)
+		if err != nil {
+			return err
+		}
+		if len(out) > 0 {
+			return fmt.Errorf("there are uncommitted changes (dir: %s)", w.dir)
+		}
+	}
+	return nil
 }
 
 func (s *state) detachAllHEADS() error {

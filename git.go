@@ -131,6 +131,16 @@ func rebase(dir, targetBranch string) error {
 	)
 }
 
+func status(dir string) ([]string, error) {
+	cmd := exec.Command("git", "status", "--porcelain=v1")
+	cmd.Dir = dir
+	bs, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("running `git status`: %w", err)
+	}
+	return strings.Split(strings.TrimSpace(string(bs)), "\n"), nil
+}
+
 func worktrees() ([]worktree, error) {
 	cmd := exec.Command("git", "worktree", "list", "--porcelain", "-z")
 	bs, err := cmd.CombinedOutput()

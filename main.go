@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"slices"
-	"strconv"
 	"strings"
 )
 
@@ -125,35 +124,17 @@ func validateGitVersion() error {
 	if err != nil {
 		return fmt.Errorf("running `git --version`: %w (output: %s)", err, s)
 	}
-	_, version, ok := strings.Cut(s, "git version ")
-	if !ok {
-		return fmt.Errorf(`unexpected version string (expected: "git version <version>", given: %q)`, s)
-	}
 
-	majorStr, remainder, ok := strings.Cut(version, ".")
-	if !ok {
-		return fmt.Errorf(`unexpected version string (expected: "<major>.<minor>.<patch>", given: %q)`, version)
-	}
-	major, err := strconv.Atoi(majorStr)
-	if err != nil {
-		return fmt.Errorf("failed to parse the major version %q as an integer: %w", majorStr, err)
+	var major, minor, patch int
+	if _, err := fmt.Sscanf(s, "git version %d.%d.%d", &major, &minor, &patch); err != nil {
+		return fmt.Errorf(`expected a version string in the form "git version <major>.<minor>.<patch>"; given %s`, s)
 	}
 	if major < minGitMajorVersion {
 		return fmt.Errorf("the major version of `git` is too low (given: %d, minimum: %d)", major, minGitMajorVersion)
 	}
-
-	minorStr, _, ok := strings.Cut(remainder, ".")
-	if !ok {
-		return fmt.Errorf(`unexpected version string (expected: "<minor>.<minor>.<patch>", given: %q)`, version)
-	}
-	minor, err := strconv.Atoi(minorStr)
-	if err != nil {
-		return fmt.Errorf("failed to parse the minor version %q as an integer: %w", minorStr, err)
-	}
 	if minor < minGitMinorVersion {
 		return fmt.Errorf("the minor version of `git` is too low (given: %d, minimum: %d)", minor, minGitMinorVersion)
 	}
-
 	return nil
 }
 

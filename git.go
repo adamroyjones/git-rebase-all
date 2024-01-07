@@ -94,7 +94,7 @@ func pull(dir string) error {
 }
 
 func rebase(dir, targetBranch string) error {
-	// --update-refs is what permits us to restrict ourselves to the leaves.
+	// The --update-refs flag permits us to restrict our interest to the leaves.
 	cmd := exec.Command("git", "rebase", targetBranch, "--update-refs")
 	cmd.Dir = dir
 	bs, err := cmd.CombinedOutput()
@@ -102,7 +102,7 @@ func rebase(dir, targetBranch string) error {
 		return nil
 	}
 
-	// If the above fails, we should abort the process.
+	// If the above fails, we should abort the rebase.
 	output := strings.TrimSpace(string(bs))
 	err = fmt.Errorf("failed to rebase %q (output: %s): %w", targetBranch, output, err)
 
@@ -141,7 +141,6 @@ func worktrees() ([]worktree, error) {
 
 	ws := strings.Split(string(bs), "\x00\x00")
 	ws = slices.DeleteFunc(ws, func(s string) bool { return s == "" })
-
 	out := make([]worktree, 0, len(ws))
 	for _, w := range ws {
 		lines := strings.Split(w, "\x00")
@@ -158,6 +157,5 @@ func worktrees() ([]worktree, error) {
 		}
 		out = append(out, worktree{dir: dir, branch: branch})
 	}
-
 	return out, nil
 }

@@ -30,7 +30,7 @@ type state struct {
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, `git-rebase-all: Rebase all branches across all worktrees.
+		fmt.Fprintf(os.Stdout, `git-rebase-all: Rebase all branches across all worktrees.
 
 Usage:
   Rebase onto a specified branch.

@@ -80,8 +80,7 @@ func detachHEAD(dir string) error {
 	sha := strings.TrimSpace(string(bs))
 	cmd = exec.Command("git", "checkout", sha)
 	cmd.Dir = dir
-	bs, err = cmd.CombinedOutput()
-	if err != nil {
+	if bs, err = cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("detaching the HEAD (directory: %s): %w (output: %s)", dir, err, strings.TrimSpace(string(bs)))
 	}
 	return nil
@@ -115,20 +114,18 @@ func rebase(dir, targetBranch string) error {
 	}
 
 	output := strings.TrimSpace(string(bs))
+	err = fmt.Errorf("failed to rebase %q (output: %s): %w", targetBranch, output, err)
+
 	cmd = exec.Command("git", "rebase", "--abort")
 	cmd.Dir = dir
 	abortBs, abortErr := cmd.CombinedOutput()
 	if abortErr == nil {
-		return fmt.Errorf(
-			"failed to rebase %q, but successfully aborted: %w (output: %s)",
-			targetBranch, err, output,
-		)
+		return fmt.Errorf("%w; successfully aborted", err)
 	}
+
 	abortOutput := strings.TrimSpace(string(abortBs))
-	return fmt.Errorf(
-		"failed to rebase %q: %w (output: %s); failed to abort: %w (output: %s)",
-		targetBranch, err, output, abortErr, abortOutput,
-	)
+	abortErr = fmt.Errorf("failed to abort the rebase: %w (output: %s)", abortErr, abortOutput)
+	return fmt.Errorf("%w; %w", err, abortErr)
 }
 
 func status(dir string) ([]string, error) {
@@ -160,7 +157,6 @@ func worktrees() ([]worktree, error) {
 
 		before, dir, ok := strings.Cut(lines[0], " ")
 		if !ok || before != "worktree" {
-			// TODO: Add more error-handling for the case where HEAD is detatched.
 			return nil, fmt.Errorf(`expected text in the form "worktree <dir>"; found %q`, lines[0])
 		}
 
@@ -169,7 +165,6 @@ func worktrees() ([]worktree, error) {
 			return nil, fmt.Errorf(`expected text in the form "branch <ref>"; found %q (dir: %s)`, lines[2], dir)
 		}
 
-		// TODO: Can we use Git instead to reformat this?
 		branchComponents := strings.Split(branchRef, "/")
 		if d := len(branchComponents); d < 3 {
 			return nil, fmt.Errorf("expected at least 3 branch components (e.g. refs/heads/master); found %d", d)

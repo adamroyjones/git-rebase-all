@@ -1,7 +1,7 @@
 # git-rebase-all
 
 This program rebases all branches across all worktreees for the current working
-directory.
+directory's git repository.
 
 - [Prerequisites](#prerequisites)
 - [Why does this program exist?](#why-does-this-program-exist?)
@@ -19,11 +19,11 @@ branch (e.g., master) that moves frequently, and if you prefer to keep your
 branches rebased onto that target branch, then you've probably found that it's
 tedious to repeatedly rebase your branches.
 
-It's especially awkward if you want to ensure that the graphical structure is
+It's still more tedious if you want to ensure that the graphical structure is
 preserved after rebasing; that is, to preserve the fact that if `a -> b` before
 rebasing `a` and `b` onto the target branch, then `a -> b` after so rebasing.
 
-This program attempts to make this process less tedious.
+The (trivial) program in this repository attempts to make this process simpler.
 
 ## Installing
 

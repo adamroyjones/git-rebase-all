@@ -109,7 +109,7 @@ func run(targetBranch string) (err error) {
 		return fmt.Errorf("finding the leaf branches: %w", err)
 	}
 
-	if err := s.updateBranches(); err != nil {
+	if err := s.rebaseLeaves(); err != nil {
 		return fmt.Errorf("updating the leaf branches: %w", err)
 	}
 
@@ -230,14 +230,14 @@ func (s *state) updateTargetBranch() error {
 	return nil
 }
 
-func (s *state) updateBranches() error {
+func (s *state) rebaseLeaves() error {
 	for i, b := range s.leaves {
 		fmt.Printf("  %s [%d/%d]...\n", b, i+1, len(s.leaves))
 		if err := checkout(s.currentDir, b); err != nil {
-			return err
+			return fmt.Errorf("checking out a branch (dir: %s, branch: %s): %w", s.currentDir, b, err)
 		}
 		if err := rebase(s.currentDir, s.targetBranch); err != nil {
-			return err
+			return fmt.Errorf("rebasing %q onto %q (dir: %s): %w", b, s.targetBranch, s.currentDir, err)
 		}
 	}
 	return nil

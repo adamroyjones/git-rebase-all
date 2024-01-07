@@ -61,10 +61,10 @@ func run() (err error) {
 	}
 
 	if err := s.constructLeaves(); err != nil {
-		return fmt.Errorf("building the graph of branches: %w", err)
+		return fmt.Errorf("finding the leaf branches: %w", err)
 	}
 
-	fmt.Println("Updating 'leaf' branches...")
+	fmt.Println("Updating leaf branches...")
 	if err := s.updateBranches(); err != nil {
 		return fmt.Errorf("updating worktree branches: %w", err)
 	}

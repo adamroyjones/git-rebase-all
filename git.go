@@ -37,10 +37,9 @@ func branchChildren(dir, branch string) ([]string, error) {
 	out := make([]string, 0, len(lines))
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		// The code detaches all of the HEADs and performs the Git operations in
-		// that state. The command `git branch --contains master` (say) will
-		// include the detached HEAD in the list; this should be excluded.
-		// TODO: Is there a better way of avoiding this?
+		// The code detaches all of the HEADs and performs the git operations in
+		// that state. The command `git branch --contains master` (say) will include
+		// both master and the detached HEAD in the list. We should exclude them.
 		if line == "" || line == branch || strings.Contains(line, "HEAD detached") {
 			continue
 		}
@@ -53,8 +52,8 @@ func checkout(dir, branch string) error {
 	cmd := exec.Command("git", "checkout", branch)
 	cmd.Dir = dir
 	if bs, err := cmd.CombinedOutput(); err != nil {
-		msg := strings.TrimSpace(string(bs))
-		return fmt.Errorf("running `git checkout %s` (message: %s, dir: %s): %w", branch, msg, dir, err)
+		output := strings.TrimSpace(string(bs))
+		return fmt.Errorf("running `git checkout %s` (dir: %s): %w (output: %s)", branch, dir, err, output)
 	}
 	return nil
 }
@@ -64,7 +63,7 @@ func decapitate(dir string) error {
 	cmd.Dir = dir
 	bs, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("determining the commit SHA (dir: %s): %w", dir, err)
+		return fmt.Errorf("determining the commit SHA (dir: %s): %w (output: %s)", dir, err, strings.TrimSpace(string(bs)))
 	}
 
 	sha := strings.TrimSpace(string(bs))
@@ -103,6 +102,7 @@ func rebase(dir, targetBranch string) error {
 		return nil
 	}
 
+	// If the above fails, we should abort the process.
 	output := strings.TrimSpace(string(bs))
 	err = fmt.Errorf("failed to rebase %q (output: %s): %w", targetBranch, output, err)
 

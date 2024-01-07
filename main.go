@@ -81,7 +81,7 @@ func run(targetBranch string) (err error) {
 		return fmt.Errorf("constructing state struct: %w", err)
 	}
 
-	if err := s.unstagedChanges(); err != nil {
+	if err := s.errIfUncommittedChanges(); err != nil {
 		return fmt.Errorf("verifying that there are no unstaged changes: %w", err)
 	}
 
@@ -92,8 +92,8 @@ func run(targetBranch string) (err error) {
 	defer func() { err = errors.Join(err, s.restore()) }()
 
 	// git doesn't permit a branch to be checked out in more than one worktree. By
-	// decapitating each worktree, the program can then work in just one directory
-	// (namely, the current directory).
+	// decapitating each worktree, we can work in a single directory (namely, the
+	// current directory).
 	if err := s.decapitateAll(); err != nil {
 		return fmt.Errorf("failed to detach the HEAD for each worktree: %w", err)
 	}
@@ -148,7 +148,7 @@ func newState(targetBranch string) (*state, error) {
 
 	branches, err := branches(currentDir)
 	if err != nil {
-		return nil, fmt.Errorf("finding current branches: %w", err)
+		return nil, fmt.Errorf("listing the local branches: %w", err)
 	}
 
 	if targetBranch != "" && !slices.Contains(branches, targetBranch) {
@@ -172,11 +172,11 @@ func newState(targetBranch string) (*state, error) {
 	}, nil
 }
 
-func (s *state) unstagedChanges() error {
+func (s *state) errIfUncommittedChanges() error {
 	for _, w := range s.worktrees {
 		out, err := status(w.dir)
 		if err != nil {
-			return err
+			return fmt.Errorf("checking for uncommitted changes (dir: %s): %w", w.dir, err)
 		}
 		if len(out) > 0 {
 			return fmt.Errorf("there are uncommitted changes (dir: %s)", w.dir)
@@ -204,12 +204,12 @@ func (s *state) constructLeaves() error {
 			return err
 		}
 		if len(children) > 0 {
-			leaves = slices.DeleteFunc(leaves, func(str string) bool { return str == branch })
+			leaves = slices.DeleteFunc(leaves, func(leaf string) bool { return leaf == branch })
 		}
 	}
 
 	// We remove the target branch from consideration as we update this independently.
-	s.leaves = slices.DeleteFunc(leaves, func(str string) bool { return str == s.targetBranch })
+	s.leaves = slices.DeleteFunc(leaves, func(leaf string) bool { return leaf == s.targetBranch })
 	return nil
 }
 

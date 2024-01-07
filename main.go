@@ -151,7 +151,8 @@ func (s *state) constructLeaves() error {
 		}
 	}
 
-	s.leaves = leaves
+	// We remove the target branch from consideration; we update this independently.
+	s.leaves = slices.DeleteFunc(leaves, func(str string) bool { return str == s.targetBranch })
 	return nil
 }
 

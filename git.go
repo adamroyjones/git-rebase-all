@@ -74,14 +74,14 @@ func decapitate(dir string) error {
 	cmd.Dir = dir
 	bs, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("determining the commit SHA (directory: %s): %w", dir, err)
+		return fmt.Errorf("determining the commit SHA (dir: %s): %w", dir, err)
 	}
 
 	sha := strings.TrimSpace(string(bs))
 	cmd = exec.Command("git", "checkout", sha)
 	cmd.Dir = dir
 	if bs, err = cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("detaching the HEAD (directory: %s): %w (output: %s)", dir, err, strings.TrimSpace(string(bs)))
+		return fmt.Errorf("detaching the HEAD (dir: %s): %w (output: %s)", dir, err, strings.TrimSpace(string(bs)))
 	}
 	return nil
 }
@@ -140,11 +140,13 @@ func status(dir string) ([]string, error) {
 	return slices.DeleteFunc(ss, func(s string) bool { return s == "" }), nil
 }
 
+// worktrees returns the set of worktrees. It will return an error if there
+// exists a worktree that isn't a checked-out branch.
 func worktrees() ([]worktree, error) {
 	cmd := exec.Command("git", "worktree", "list", "--porcelain", "-z")
 	bs, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("running `git branch`: %w", err)
+		return nil, fmt.Errorf("running `git branch`: %w (output: %s)", err, strings.TrimSpace(string(bs)))
 	}
 
 	ws := strings.Split(string(bs), "\x00\x00")

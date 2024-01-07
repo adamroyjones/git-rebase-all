@@ -73,11 +73,11 @@ Details:
 
 func run(targetBranch string) (err error) {
 	if err := validateGitVersion(); err != nil {
-		return err
+		return fmt.Errorf("validating the version of git :%w", err)
 	}
 
 	if exec.Command("git", "rev-parse", "--is-inside-work-tree").Run() != nil {
-		return errors.New("the program is not being run from a Git directory")
+		return errors.New("the program is not being run from a git directory")
 	}
 
 	s, err := newState(targetBranch)
@@ -95,6 +95,9 @@ func run(targetBranch string) (err error) {
 	}
 	defer func() { err = errors.Join(err, s.restore()) }()
 
+	// git doesn't permit a branch to be checked out in more than one worktree. By
+	// decapitating each worktree, the program can then work in just one directory
+	// (namely, the current directory).
 	if err := s.decapitateAll(); err != nil {
 		return fmt.Errorf("failed to detach the HEAD for each worktree: %w", err)
 	}
@@ -104,13 +107,13 @@ func run(targetBranch string) (err error) {
 		return fmt.Errorf("updating target branch (%s): %w", s.targetBranch, err)
 	}
 
+	fmt.Println("Updating the leaf branches...")
 	if err := s.constructLeaves(); err != nil {
 		return fmt.Errorf("finding the leaf branches: %w", err)
 	}
 
-	fmt.Println("Updating leaf branches...")
 	if err := s.updateBranches(); err != nil {
-		return fmt.Errorf("updating worktree branches: %w", err)
+		return fmt.Errorf("updating the leaf branches: %w", err)
 	}
 
 	return nil
@@ -155,7 +158,7 @@ func validateGitVersion() error {
 }
 
 func newState(targetBranch string) (*state, error) {
-	currentDirectory, err := os.Getwd()
+	currentDir, err := os.Getwd()
 	if err != nil {
 		return nil, fmt.Errorf("fetching the current directory: %w", err)
 	}
@@ -165,7 +168,7 @@ func newState(targetBranch string) (*state, error) {
 		return nil, fmt.Errorf("fetching and parsing worktrees: %w", err)
 	}
 
-	branches, err := branches(currentDirectory)
+	branches, err := branches(currentDir)
 	if err != nil {
 		return nil, fmt.Errorf("finding current branches: %w", err)
 	}
@@ -180,10 +183,10 @@ func newState(targetBranch string) (*state, error) {
 		targetBranch = "master"
 	}
 	if targetBranch == "" {
-		return nil, errors.New("no branch was specified and unable to find master or main")
+		return nil, errors.New("no branch was specified and main and master could not be found")
 	}
 
-	currentBranch, err := currentBranch(currentDirectory)
+	currentBranch, err := currentBranch(currentDir)
 	if err != nil {
 		return nil, fmt.Errorf("finding current branch: %w", err)
 	}
@@ -191,7 +194,7 @@ func newState(targetBranch string) (*state, error) {
 	return &state{
 		worktrees:     worktrees,
 		branches:      branches,
-		currentDir:    currentDirectory,
+		currentDir:    currentDir,
 		currentBranch: currentBranch,
 		targetBranch:  targetBranch,
 	}, nil
@@ -213,7 +216,7 @@ func (s *state) unstagedChanges() error {
 func (s *state) decapitateAll() error {
 	for _, w := range s.worktrees {
 		if err := decapitate(w.dir); err != nil {
-			return fmt.Errorf("failed to the detach the HEAD (worktree directory: %s): %w", w.dir, err)
+			return fmt.Errorf("failed to the detach the HEAD (dir: %s): %w", w.dir, err)
 		}
 	}
 	return nil
@@ -233,7 +236,7 @@ func (s *state) constructLeaves() error {
 		}
 	}
 
-	// We remove the target branch from consideration; we update this independently.
+	// We remove the target branch from consideration as we update this independently.
 	s.leaves = slices.DeleteFunc(leaves, func(str string) bool { return str == s.targetBranch })
 	return nil
 }
@@ -243,7 +246,7 @@ func (s *state) updateTargetBranch() error {
 		return fmt.Errorf("checking out the target branch (dir: %s, branch: %s): %w", s.currentDir, s.targetBranch, err)
 	}
 	if err := pull(s.currentDir); err != nil {
-		return fmt.Errorf("pulling from %s: %w", s.currentDir, err)
+		return fmt.Errorf("pulling (dir: %s, branch: %s): %w", s.currentDir, s.targetBranch, err)
 	}
 	return nil
 }
@@ -264,7 +267,7 @@ func (s *state) updateBranches() error {
 func (s *state) restore() error {
 	for _, w := range s.worktrees {
 		if err := checkout(w.dir, w.branch); err != nil {
-			return fmt.Errorf("restoring the worktree (directory: %s, branch: %s): checking out: %w", w.dir, w.branch, err)
+			return fmt.Errorf("restoring the worktree (dir: %s, branch: %s): checking out: %w", w.dir, w.branch, err)
 		}
 	}
 	return nil

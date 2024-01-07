@@ -167,7 +167,7 @@ func (s *state) updateTargetBranch() error {
 
 func (s *state) updateBranches() error {
 	for i, b := range s.leaves {
-		fmt.Printf("%s [%d/%d]...\n", b, i+1, len(s.branches))
+		fmt.Printf("  %s [%d/%d]...\n", b, i+1, len(s.leaves))
 		if err := checkout(s.currentDir, b); err != nil {
 			return err
 		}

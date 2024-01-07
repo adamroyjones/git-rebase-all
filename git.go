@@ -37,7 +37,11 @@ func branchChildren(dir, branch string) ([]string, error) {
 	out := make([]string, 0, len(lines))
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		if line == "" || line == branch {
+		// The code detaches all of the HEADs and performs the Git operations in
+		// that state. The command `git branch --contains master` (say) will
+		// include the detached HEAD in the list; this should be excluded.
+		// TODO: Is there a better way of avoiding this?
+		if line == "" || line == branch || strings.Contains(line, "HEAD detached") {
 			continue
 		}
 		out = append(out, line)
@@ -102,7 +106,8 @@ func pull(dir string) error {
 }
 
 func rebase(dir, targetBranch string) error {
-	cmd := exec.Command("git", "rebase", targetBranch)
+	// --update-refs is what permits us to restrict ourselves to the leaves.
+	cmd := exec.Command("git", "rebase", targetBranch, "--update-refs")
 	cmd.Dir = dir
 	bs, err := cmd.CombinedOutput()
 	if err == nil {

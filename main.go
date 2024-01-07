@@ -14,6 +14,7 @@ type worktree struct{ dir, branch string }
 type state struct {
 	worktrees     []worktree
 	branches      []string
+	leaves        []string
 	currentDir    string
 	currentBranch string
 	targetBranch  string
@@ -41,6 +42,8 @@ func run() (err error) {
 		return fmt.Errorf("constructing state struct: %w", err)
 	}
 
+	// TODO: Check for any unstaged changes before proceeding.
+
 	fmt.Println("Fetching and pruning...")
 	if err := fetch(s.currentDir); err != nil {
 		return fmt.Errorf("fetching and pruning: %w", err)
@@ -51,23 +54,16 @@ func run() (err error) {
 		return fmt.Errorf("failed to detach the HEAD for each worktree: %w", err)
 	}
 
-	// TODO: Build a graph of branches.
-	for _, branch := range s.branches {
-		children, err := branchChildren(s.currentDir, branch)
-		if err != nil {
-			return err
-		}
-		for _, child := range children {
-			fmt.Printf("%s -> %s\n", branch, child)
-		}
-	}
-
 	fmt.Printf("Updating %q...\n", s.targetBranch)
 	if err := s.updateTargetBranch(); err != nil {
 		return fmt.Errorf("updating target branch (%s): %w", s.targetBranch, err)
 	}
 
-	fmt.Println("Updating branches...")
+	if err := s.constructLeaves(); err != nil {
+		return fmt.Errorf("building the graph of branches: %w", err)
+	}
+
+	fmt.Println("Updating 'leaf' branches...")
 	if err := s.updateBranches(); err != nil {
 		return fmt.Errorf("updating worktree branches: %w", err)
 	}
@@ -127,6 +123,24 @@ func (s *state) detachAllHEADS() error {
 	return nil
 }
 
+func (s *state) constructLeaves() error {
+	leaves := make([]string, len(s.branches))
+	copy(leaves, s.branches)
+
+	for _, branch := range s.branches {
+		children, err := branchChildren(s.currentDir, branch)
+		if err != nil {
+			return err
+		}
+		if len(children) > 0 {
+			leaves = slices.DeleteFunc(leaves, func(str string) bool { return str == branch })
+		}
+	}
+
+	s.leaves = leaves
+	return nil
+}
+
 func (s *state) updateTargetBranch() error {
 	if err := checkout(s.currentDir, s.targetBranch); err != nil {
 		return fmt.Errorf("checking out the target branch (dir: %s, branch: %s): %w", s.currentDir, s.targetBranch, err)
@@ -137,9 +151,8 @@ func (s *state) updateTargetBranch() error {
 	return nil
 }
 
-// TODO: Make use the graph here once you've constructed it properly.
 func (s *state) updateBranches() error {
-	for i, b := range s.branches {
+	for i, b := range s.leaves {
 		fmt.Printf("%s [%d/%d]...\n", b, i+1, len(s.branches))
 		if err := checkout(s.currentDir, b); err != nil {
 			return err

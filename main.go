@@ -30,27 +30,28 @@ type state struct {
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintln(os.Stderr, `git-rebase-all: Rebase all branches across all worktrees.
+		fmt.Fprintf(os.Stderr, `git-rebase-all: Rebase all branches across all worktrees.
 
 Usage:
   Rebase onto a specified branch.
     git-rebase-all -b foo
 
-  Rebase onto main if it exists, or master if that exists.
-    git-rebse-all
+  Rebase onto main if it exists, else master if it exists, and otherwise error.
+    git-rebase-all
 
   Print version information and exit
     git-rebase-all -v
 
 Details:
-  This program expects Git 2.38+ to be used.
+  This program requires Git %d.%d+.
 
   This program will update the target branch, collect all 'leaf' branches (that
   is, branches that are not reachable from any other branch), and rebase each
   leaf branch onto the (now-updated) target branch. The updates are performed
   with "git rebase --update-refs".
 
-  See github.com/adamroyjones/git-rebase-all.`)
+  See github.com/adamroyjones/git-rebase-all.
+`, minGitMajorVersion, minGitMinorVersion)
 	}
 
 	var targetBranch string

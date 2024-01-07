@@ -142,30 +142,21 @@ func worktrees() ([]worktree, error) {
 	ws := strings.Split(string(bs), "\x00\x00")
 	ws = slices.DeleteFunc(ws, func(s string) bool { return s == "" })
 
-	out := make([]worktree, len(ws))
-	for i, w := range ws {
+	out := make([]worktree, 0, len(ws))
+	for _, w := range ws {
 		lines := strings.Split(w, "\x00")
 		if d := len(lines); d != 3 {
-			return nil, fmt.Errorf("expected worktree %d to have 3 lines; found %d", i, d)
+			return nil, fmt.Errorf("expected the worktree to have 3 lines; found %d (output: %s)", d, strings.Join(lines, "\n"))
 		}
 
-		before, dir, ok := strings.Cut(lines[0], " ")
-		if !ok || before != "worktree" {
-			return nil, fmt.Errorf(`expected text in the form "worktree <dir>"; found %q`, lines[0])
+		var dir, branch string
+		if _, err := fmt.Sscanf(lines[0], "worktree %s", &dir); err != nil {
+			return nil, fmt.Errorf(`expected text in the form "worktree <dir>"; found %q (dir: %s)`, lines[0], dir)
 		}
-
-		before, branchRef, ok := strings.Cut(lines[2], " ")
-		if !ok || before != "branch" {
-			return nil, fmt.Errorf(`expected text in the form "branch <ref>"; found %q (dir: %s)`, lines[2], dir)
+		if _, err := fmt.Sscanf(lines[2], "branch refs/heads/%s", &branch); err != nil {
+			return nil, fmt.Errorf(`expected text in the form "branch refs/heads/<branch>"; found %q (dir: %s)`, lines[2], dir)
 		}
-
-		branchComponents := strings.Split(branchRef, "/")
-		if d := len(branchComponents); d < 3 {
-			return nil, fmt.Errorf("expected at least 3 branch components (e.g. refs/heads/master); found %d", d)
-		}
-		branch := strings.Join(branchComponents[2:], "/")
-
-		out[i] = worktree{dir: dir, branch: branch}
+		out = append(out, worktree{dir: dir, branch: branch})
 	}
 
 	return out, nil

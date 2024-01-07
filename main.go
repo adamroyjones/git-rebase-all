@@ -7,9 +7,15 @@ import (
 	"os"
 	"os/exec"
 	"slices"
+	"strconv"
+	"strings"
 )
 
-const version = "0.0.1"
+const (
+	version            = "0.0.1"
+	minGitMajorVersion = 2
+	minGitMinorVersion = 38
+)
 
 type worktree struct{ dir, branch string }
 
@@ -65,7 +71,10 @@ Details:
 }
 
 func run(targetBranch string) (err error) {
-	// TODO: Validate the version of git, first.
+	if err := validateGitVersion(); err != nil {
+		return err
+	}
+
 	if exec.Command("git", "rev-parse", "--is-inside-work-tree").Run() != nil {
 		return errors.New("the program is not being run from a Git directory")
 	}
@@ -101,6 +110,44 @@ func run(targetBranch string) (err error) {
 	fmt.Println("Updating leaf branches...")
 	if err := s.updateBranches(); err != nil {
 		return fmt.Errorf("updating worktree branches: %w", err)
+	}
+
+	return nil
+}
+
+func validateGitVersion() error {
+	bs, err := exec.Command("git", "--version").CombinedOutput()
+	s := strings.TrimSpace(string(bs))
+	if err != nil {
+		return fmt.Errorf("running `git --version`: %w (output: %s)", err, s)
+	}
+	_, version, ok := strings.Cut(s, "git version ")
+	if !ok {
+		return fmt.Errorf(`unexpected version string (expected: "git version <version>", given: %q)`, s)
+	}
+
+	majorStr, remainder, ok := strings.Cut(version, ".")
+	if !ok {
+		return fmt.Errorf(`unexpected version string (expected: "<major>.<minor>.<patch>", given: %q)`, version)
+	}
+	major, err := strconv.Atoi(majorStr)
+	if err != nil {
+		return fmt.Errorf("failed to parse the major version %q as an integer: %w", majorStr, err)
+	}
+	if major < minGitMajorVersion {
+		return fmt.Errorf("the major version of `git` is too low (given: %d, minimum: %d)", major, minGitMajorVersion)
+	}
+
+	minorStr, _, ok := strings.Cut(remainder, ".")
+	if !ok {
+		return fmt.Errorf(`unexpected version string (expected: "<minor>.<minor>.<patch>", given: %q)`, version)
+	}
+	minor, err := strconv.Atoi(minorStr)
+	if err != nil {
+		return fmt.Errorf("failed to parse the minor version %q as an integer: %w", minorStr, err)
+	}
+	if minor < minGitMinorVersion {
+		return fmt.Errorf("the minor version of `git` is too low (given: %d, minimum: %d)", minor, minGitMinorVersion)
 	}
 
 	return nil

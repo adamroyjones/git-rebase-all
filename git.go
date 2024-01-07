@@ -135,7 +135,9 @@ func status(dir string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("running `git status`: %w", err)
 	}
-	return strings.Split(strings.TrimSpace(string(bs)), "\n"), nil
+
+	ss := strings.Split(strings.TrimSpace(string(bs)), "\n")
+	return slices.DeleteFunc(ss, func(s string) bool { return s == "" }), nil
 }
 
 func worktrees() ([]worktree, error) {

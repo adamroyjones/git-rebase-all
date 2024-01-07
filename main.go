@@ -125,13 +125,13 @@ func validateGitVersion() error {
 
 	var major, minor, patch int
 	if _, err := fmt.Sscanf(s, "git version %d.%d.%d", &major, &minor, &patch); err != nil {
-		return fmt.Errorf(`expected a version string in the form "git version <major>.<minor>.<patch>"; given %s`, s)
+		return fmt.Errorf(`expected a version string in the form "git version <major>.<minor>.<patch>"; given %q`, s)
 	}
 	if major < minGitMajorVersion {
-		return fmt.Errorf("the major version of `git` is too low (given: %d, minimum: %d)", major, minGitMajorVersion)
+		return fmt.Errorf("the major version of git is too low (given: %d, minimum: %d)", major, minGitMajorVersion)
 	}
-	if minor < minGitMinorVersion {
-		return fmt.Errorf("the minor version of `git` is too low (given: %d, minimum: %d)", minor, minGitMinorVersion)
+	if major == minGitMajorVersion && minor < minGitMinorVersion {
+		return fmt.Errorf("the minor version of git is too low (given: %d, minimum: %d)", minor, minGitMinorVersion)
 	}
 	return nil
 }

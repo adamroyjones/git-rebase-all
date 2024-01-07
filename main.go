@@ -51,7 +51,7 @@ func run() (err error) {
 	}
 	defer func() { err = errors.Join(err, s.restore()) }()
 
-	if err := s.detachAllHEADS(); err != nil {
+	if err := s.decapitateAll(); err != nil {
 		return fmt.Errorf("failed to detach the HEAD for each worktree: %w", err)
 	}
 
@@ -128,9 +128,9 @@ func (s *state) unstagedChanges() error {
 	return nil
 }
 
-func (s *state) detachAllHEADS() error {
+func (s *state) decapitateAll() error {
 	for _, w := range s.worktrees {
-		if err := detachHEAD(w.dir); err != nil {
+		if err := decapitate(w.dir); err != nil {
 			return fmt.Errorf("failed to the detach the HEAD (worktree directory: %s): %w", w.dir, err)
 		}
 	}

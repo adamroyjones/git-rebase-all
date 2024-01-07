@@ -69,7 +69,7 @@ func currentBranch(dir string) (string, error) {
 	return strings.TrimSpace(string(bs)), nil
 }
 
-func detachHEAD(dir string) error {
+func decapitate(dir string) error {
 	cmd := exec.Command("git", "rev-parse", "HEAD")
 	cmd.Dir = dir
 	bs, err := cmd.CombinedOutput()

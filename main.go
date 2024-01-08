@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const version = "0.0.3"
+const version = "0.0.4"
 
 const minGitMajorVersion, minGitMinorVersion = 2, 38
 
@@ -72,8 +72,8 @@ func run(targetBranch string) (err error) {
 		return fmt.Errorf("validating the version of git :%w", err)
 	}
 
-	if exec.Command("git", "rev-parse", "--is-inside-work-tree").Run() != nil {
-		return errors.New("the program is not being run from a git directory")
+	if bs, err := exec.Command("git", "rev-parse", "--is-inside-work-tree").CombinedOutput(); err != nil {
+		return fmt.Errorf("checking whether the program is being run from a git directory: %w (output: %s)", err, trimbs(bs))
 	}
 
 	s, err := newState(targetBranch)
@@ -82,7 +82,7 @@ func run(targetBranch string) (err error) {
 	}
 
 	if err := s.errIfUncommittedChanges(); err != nil {
-		return fmt.Errorf("verifying that there are no unstaged changes: %w", err)
+		return fmt.Errorf("verifying that there are no uncommitted changes: %w", err)
 	}
 
 	fmt.Println("Fetching and pruning...")

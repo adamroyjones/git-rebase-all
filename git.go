@@ -145,7 +145,7 @@ func worktrees() ([]worktree, error) {
 	cmd := exec.Command("git", "worktree", "list", "--porcelain", "-z")
 	bs, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("running `git branch`: %w (output: %s)", err, tribms(bs))
+		return nil, fmt.Errorf("running `git branch`: %w (output: %s)", err, trimbs(bs))
 	}
 
 	ws := strings.Split(string(bs), "\x00\x00")

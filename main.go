@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const version = "0.0.4"
+const version = "0.0.5"
 
 const minGitMajorVersion, minGitMinorVersion = 2, 38
 

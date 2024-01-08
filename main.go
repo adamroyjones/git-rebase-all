@@ -10,18 +10,18 @@ import (
 	"strings"
 )
 
-const version = "0.0.2"
+const version = "0.0.3"
 
 const minGitMajorVersion, minGitMinorVersion = 2, 38
 
 type worktree struct{ dir, branch string }
 
 type state struct {
-	worktrees    []worktree
-	branches     []string
-	leaves       []string
-	currentDir   string
-	targetBranch string
+	worktrees        []worktree
+	branches         []string
+	branchesToRebase []string
+	currentDir       string
+	targetBranch     string
 }
 
 func main() {
@@ -103,13 +103,13 @@ func run(targetBranch string) (err error) {
 		return fmt.Errorf("updating target branch (%s): %w", s.targetBranch, err)
 	}
 
-	fmt.Println("Updating the leaf branches...")
-	if err := s.constructLeaves(); err != nil {
-		return fmt.Errorf("finding the leaf branches: %w", err)
+	fmt.Println("Updating the branches...")
+	if err := s.constructBranchesToRebase(); err != nil {
+		return fmt.Errorf("constructing the list of branches to rebase: %w", err)
 	}
 
-	if err := s.rebaseLeaves(); err != nil {
-		return fmt.Errorf("updating the leaf branches: %w", err)
+	if err := s.rebaseBranches(); err != nil {
+		return fmt.Errorf("rebasing the branches: %w", err)
 	}
 
 	return nil
@@ -194,22 +194,46 @@ func (s *state) decapitateAll() error {
 	return nil
 }
 
-func (s *state) constructLeaves() error {
-	leaves := make([]string, len(s.branches))
-	copy(leaves, s.branches)
+// constructBranchesToRebase comprises two types of branch: "leaf" branches and
+// those branches that are "behind" the target branch and so can be
+// fast-forwarded. We'll collapse any distinction between the two categories.
+func (s *state) constructBranchesToRebase() error {
+	branchesToRebase := make([]string, len(s.branches))
+	copy(branchesToRebase, s.branches)
+
+	targetSHA, err := branchToSHA(s.currentDir, s.targetBranch)
+	if err != nil {
+		return fmt.Errorf("finding the SHA of %s (dir: %s): %w", s.targetBranch, s.currentDir, err)
+	}
 
 	for _, branch := range s.branches {
 		children, err := branchChildren(s.currentDir, branch)
 		if err != nil {
 			return err
 		}
-		if len(children) > 0 {
-			leaves = slices.DeleteFunc(leaves, func(leaf string) bool { return leaf == branch })
+
+		// If a branch has no children, it is a "leaf" branch.
+		if len(children) == 0 {
+			continue
 		}
+
+		// If a branch has the target branch as a child, and if the branch and the
+		// target branch don't point to the same commit, then we should rebase.
+		if slices.Contains(children, s.targetBranch) {
+			branchSHA, err := branchToSHA(s.currentDir, branch)
+			if err != nil {
+				return fmt.Errorf("finding the SHA of %s (dir: %s): %w", s.targetBranch, s.currentDir, err)
+			}
+			if branchSHA != targetSHA {
+				continue
+			}
+		}
+
+		branchesToRebase = slices.DeleteFunc(branchesToRebase, func(b string) bool { return b == branch })
 	}
 
 	// We remove the target branch from consideration as we update this independently.
-	s.leaves = slices.DeleteFunc(leaves, func(leaf string) bool { return leaf == s.targetBranch })
+	s.branchesToRebase = slices.DeleteFunc(branchesToRebase, func(b string) bool { return b == s.targetBranch })
 	return nil
 }
 
@@ -223,9 +247,9 @@ func (s *state) updateTargetBranch() error {
 	return nil
 }
 
-func (s *state) rebaseLeaves() error {
-	for i, b := range s.leaves {
-		fmt.Printf("  %s [%d/%d]...\n", b, i+1, len(s.leaves))
+func (s *state) rebaseBranches() error {
+	for i, b := range s.branchesToRebase {
+		fmt.Printf("  %s [%d/%d]...\n", b, i+1, len(s.branchesToRebase))
 		if err := checkout(s.currentDir, b); err != nil {
 			return fmt.Errorf("checking out a branch (dir: %s, branch: %s): %w", s.currentDir, b, err)
 		}

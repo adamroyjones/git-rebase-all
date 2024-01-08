@@ -9,6 +9,16 @@ import (
 	"strings"
 )
 
+func branchToSHA(dir, branch string) (string, error) {
+	cmd := exec.Command("git", "rev-parse", branch)
+	cmd.Dir = dir
+	bs, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("running `git rev-parse`: %w", err)
+	}
+	return strings.TrimSpace(string(bs)), nil
+}
+
 func branches(dir string) ([]string, error) {
 	cmd := exec.Command("git", "branch", "--format=%(refname:short)")
 	cmd.Dir = dir

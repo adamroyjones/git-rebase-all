@@ -16,7 +16,7 @@ func branchToSHA(dir, branch string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("running `git rev-parse`: %w", err)
 	}
-	return strings.TrimSpace(string(bs)), nil
+	return trimbs(bs), nil
 }
 
 func branches(dir string) ([]string, error) {
@@ -62,8 +62,7 @@ func checkout(dir, branch string) error {
 	cmd := exec.Command("git", "checkout", branch)
 	cmd.Dir = dir
 	if bs, err := cmd.CombinedOutput(); err != nil {
-		output := strings.TrimSpace(string(bs))
-		return fmt.Errorf("running `git checkout %s` (dir: %s): %w (output: %s)", branch, dir, err, output)
+		return fmt.Errorf("running `git checkout %s` (dir: %s): %w (output: %s)", branch, dir, err, trimbs(bs))
 	}
 	return nil
 }
@@ -73,14 +72,14 @@ func decapitate(dir string) error {
 	cmd.Dir = dir
 	bs, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("determining the commit SHA (dir: %s): %w (output: %s)", dir, err, strings.TrimSpace(string(bs)))
+		return fmt.Errorf("determining the commit SHA (dir: %s): %w (output: %s)", dir, err, trimbs(bs))
 	}
 
-	sha := strings.TrimSpace(string(bs))
+	sha := trimbs(bs)
 	cmd = exec.Command("git", "checkout", sha)
 	cmd.Dir = dir
 	if bs, err = cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("detaching the HEAD (dir: %s): %w (output: %s)", dir, err, strings.TrimSpace(string(bs)))
+		return fmt.Errorf("detaching the HEAD (dir: %s): %w (output: %s)", dir, err, trimbs(bs))
 	}
 	return nil
 }
@@ -113,7 +112,7 @@ func rebase(dir, targetBranch string) error {
 	}
 
 	// If the above fails, we should abort the rebase.
-	output := strings.TrimSpace(string(bs))
+	output := trimbs(bs)
 	err = fmt.Errorf("failed to rebase %q (output: %s): %w", targetBranch, output, err)
 
 	cmd = exec.Command("git", "rebase", "--abort")
@@ -123,7 +122,7 @@ func rebase(dir, targetBranch string) error {
 		return fmt.Errorf("%w; successfully aborted", err)
 	}
 
-	abortOutput := strings.TrimSpace(string(abortBs))
+	abortOutput := trimbs(abortBs)
 	abortErr = fmt.Errorf("failed to abort the rebase: %w (output: %s)", abortErr, abortOutput)
 	return fmt.Errorf("%w; %w", err, abortErr)
 }
@@ -136,7 +135,7 @@ func status(dir string) ([]string, error) {
 		return nil, fmt.Errorf("running `git status`: %w", err)
 	}
 
-	ss := strings.Split(strings.TrimSpace(string(bs)), "\n")
+	ss := strings.Split(trimbs(bs), "\n")
 	return slices.DeleteFunc(ss, func(s string) bool { return s == "" || strings.HasPrefix(s, "??") }), nil
 }
 
@@ -146,7 +145,7 @@ func worktrees() ([]worktree, error) {
 	cmd := exec.Command("git", "worktree", "list", "--porcelain", "-z")
 	bs, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("running `git branch`: %w (output: %s)", err, strings.TrimSpace(string(bs)))
+		return nil, fmt.Errorf("running `git branch`: %w (output: %s)", err, tribms(bs))
 	}
 
 	ws := strings.Split(string(bs), "\x00\x00")

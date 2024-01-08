@@ -117,7 +117,7 @@ func run(targetBranch string) (err error) {
 
 func validateGitVersion() error {
 	bs, err := exec.Command("git", "--version").CombinedOutput()
-	s := strings.TrimSpace(string(bs))
+	s := trimbs(bs)
 	if err != nil {
 		return fmt.Errorf("running `git --version`: %w (output: %s)", err, s)
 	}
@@ -268,3 +268,5 @@ func (s *state) restore() error {
 	}
 	return nil
 }
+
+func trimbs(bs []byte) string { return strings.TrimSpace(string(bs)) }

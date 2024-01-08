@@ -127,7 +127,7 @@ func status(dir string) ([]string, error) {
 	}
 
 	ss := strings.Split(strings.TrimSpace(string(bs)), "\n")
-	return slices.DeleteFunc(ss, func(s string) bool { return s == "" }), nil
+	return slices.DeleteFunc(ss, func(s string) bool { return s == "" || strings.HasPrefix(s, "??") }), nil
 }
 
 // worktrees returns the set of worktrees. It will return an error if there

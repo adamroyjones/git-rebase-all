@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"errors"
 	"flag"
 	"fmt"
@@ -10,15 +11,16 @@ import (
 	"strings"
 )
 
-const version = "0.0.5"
+const version = "0.0.6"
 
 const minGitMajorVersion, minGitMinorVersion = 2, 38
 
 type worktree struct{ dir, branch string }
 
 type state struct {
-	worktrees        []worktree
-	branches         []string
+	worktrees []worktree
+	// branch -> commit SHA
+	branches         map[string]string
 	branchesToRebase []string
 	currentDir       string
 	targetBranch     string
@@ -151,13 +153,14 @@ func newState(targetBranch string) (*state, error) {
 		return nil, fmt.Errorf("listing the local branches: %w", err)
 	}
 
-	if targetBranch != "" && !slices.Contains(branches, targetBranch) {
+	branchNames := sortedKeys(branches)
+	if targetBranch != "" && !contains(branchNames, targetBranch) {
 		return nil, fmt.Errorf("the specified branch %q could not be found", targetBranch)
 	}
-	if targetBranch == "" && slices.Contains(branches, "main") {
+	if targetBranch == "" && contains(branchNames, "main") {
 		targetBranch = "main"
 	}
-	if targetBranch == "" && slices.Contains(branches, "master") {
+	if targetBranch == "" && contains(branchNames, "master") {
 		targetBranch = "master"
 	}
 	if targetBranch == "" {
@@ -198,16 +201,14 @@ func (s *state) decapitateAll() error {
 // those branches that are "behind" the target branch and so can be
 // fast-forwarded. We'll collapse any distinction between the two categories.
 func (s *state) constructBranchesToRebase() error {
-	branchesToRebase := make([]string, len(s.branches))
-	copy(branchesToRebase, s.branches)
-
-	targetSHA, err := branchToSHA(s.currentDir, s.targetBranch)
-	if err != nil {
-		return fmt.Errorf("finding the SHA of %s (dir: %s): %w", s.targetBranch, s.currentDir, err)
+	branchesToRebase := sortedKeys(s.branches)
+	targetSHA, ok := s.branches[s.targetBranch]
+	if !ok {
+		return fmt.Errorf("unable to find the branch %q in the state: this should be unreachable", s.targetBranch)
 	}
 
-	for _, branch := range s.branches {
-		children, err := branchChildren(s.currentDir, branch)
+	for branch := range s.branches {
+		children, err := s.branchChildren(s.currentDir, branch)
 		if err != nil {
 			return err
 		}
@@ -220,9 +221,9 @@ func (s *state) constructBranchesToRebase() error {
 		// If a branch has the target branch as a child, and if the branch and the
 		// target branch don't point to the same commit, then we should rebase.
 		if slices.Contains(children, s.targetBranch) {
-			branchSHA, err := branchToSHA(s.currentDir, branch)
-			if err != nil {
-				return fmt.Errorf("finding the SHA of %s (dir: %s): %w", s.targetBranch, s.currentDir, err)
+			branchSHA, ok := s.branches[branch]
+			if !ok {
+				return fmt.Errorf("unable to find the branch %q in the state: this should be unreachable", branch)
 			}
 			if branchSHA != targetSHA {
 				continue
@@ -270,3 +271,18 @@ func (s *state) restore() error {
 }
 
 func trimbs(bs []byte) string { return strings.TrimSpace(string(bs)) }
+
+func sortedKeys[K cmp.Ordered, V any](m map[K]V) []K {
+	ks := make([]K, 0, len(m))
+	for k := range m {
+		ks = append(ks, k)
+	}
+	slices.Sort(ks)
+	return ks
+}
+
+// contains presupposes that xs is sorted.
+func contains[K cmp.Ordered](xs []K, x K) bool {
+	_, ok := slices.BinarySearch(xs, x)
+	return ok
+}

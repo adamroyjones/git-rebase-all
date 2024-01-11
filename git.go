@@ -19,41 +19,62 @@ func branchToSHA(dir, branch string) (string, error) {
 	return trimbs(bs), nil
 }
 
-func branches(dir string) ([]string, error) {
-	cmd := exec.Command("git", "branch", "--format=%(refname:short)")
+func branches(dir string) (map[string]string, error) {
+	cmd := exec.Command("git", "branch", "--format=%(refname:short) %(objectname)")
 	cmd.Dir = dir
 	bs, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("running `git branch`: %w", err)
 	}
 
-	branches := []string{}
+	branches := make(map[string]string)
 	scanner := bufio.NewScanner(bytes.NewReader(bs))
 	for scanner.Scan() {
-		branches = append(branches, strings.TrimSpace(scanner.Text()))
+		line := strings.TrimSpace(scanner.Text())
+		branch, commitSHA, ok := strings.Cut(line, " ")
+		if !ok {
+			return nil, fmt.Errorf("expected the output from `git branch` to be in the form `<branch> <commit-sha>`, but no space was found (given: %s)", line)
+		}
+		branches[branch] = commitSHA
 	}
+
 	return branches, nil
 }
 
-func branchChildren(dir, branch string) ([]string, error) {
+func (s *state) branchChildren(dir, branch string) ([]string, error) {
 	cmd := exec.Command("git", "branch", "--contains", branch, "--format=%(refname:short)")
 	cmd.Dir = dir
 	bs, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("unable to list the branches that contain %s: %w", branch, err)
+		return nil, fmt.Errorf("unable to list the branches that contain the branch %q: %w", branch, err)
+	}
+
+	branchSHA, ok := s.branches[branch]
+	if !ok {
+		return nil, fmt.Errorf("unable to find the branch %q in the state: this should be unreachable", branch)
 	}
 
 	lines := strings.Split(string(bs), "\n")
 	out := make([]string, 0, len(lines))
 	for _, line := range lines {
-		line = strings.TrimSpace(line)
+		child := strings.TrimSpace(line)
 		// The code detaches all of the HEADs and performs the git operations in
 		// that state. The command `git branch --contains master` (say) will include
 		// both master and the detached HEAD in the list. We should exclude them.
-		if line == "" || line == branch || strings.Contains(line, "HEAD detached") {
+		if child == "" || child == branch || strings.Contains(child, "HEAD detached") {
 			continue
 		}
-		out = append(out, line)
+
+		// If the child points to the same commit SHA, then it isn't a "true" child.
+		childSHA, ok := s.branches[child]
+		if !ok {
+			return nil, fmt.Errorf("unable to find the branch %q in the state: this should be unreachable", child)
+		}
+		if childSHA == branchSHA {
+			continue
+		}
+
+		out = append(out, child)
 	}
 	return out, nil
 }

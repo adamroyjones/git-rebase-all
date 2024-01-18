@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-const version = "0.0.7"
+const version = "0.0.8"
 
 const minGitMajorVersion, minGitMinorVersion = 2, 38
 
@@ -201,7 +201,7 @@ func (s *state) decapitateAll() error {
 // those branches that are "behind" the target branch and so can be
 // fast-forwarded. We'll collapse any distinction between the two categories.
 func (s *state) constructBranchesToRebase() error {
-	s.branchesToRebase := sortedKeys(s.branches)
+	s.branchesToRebase = sortedKeys(s.branches)
 	targetSHA, ok := s.branches[s.targetBranch]
 	if !ok {
 		return fmt.Errorf("unable to find the branch %q in the state: this should be unreachable", s.targetBranch)

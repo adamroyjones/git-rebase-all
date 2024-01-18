@@ -207,7 +207,8 @@ func (s *state) constructBranchesToRebase() error {
 		return fmt.Errorf("unable to find the branch %q in the state: this should be unreachable", s.targetBranch)
 	}
 
-	for branch := range s.branches {
+	i := 0
+	for _, branch := range branchesToRebase {
 		children, err := s.branchChildren(s.currentDir, branch)
 		if err != nil {
 			return err
@@ -215,6 +216,8 @@ func (s *state) constructBranchesToRebase() error {
 
 		// If a branch has no children, it is a "leaf" branch.
 		if len(children) == 0 {
+			branchesToRebase[i] = branch
+			i++
 			continue
 		}
 
@@ -226,12 +229,13 @@ func (s *state) constructBranchesToRebase() error {
 				return fmt.Errorf("unable to find the branch %q in the state: this should be unreachable", branch)
 			}
 			if branchSHA != targetSHA {
+				branchesToRebase[i] = branch
+				i++
 				continue
 			}
 		}
-
-		branchesToRebase = slices.DeleteFunc(branchesToRebase, func(b string) bool { return b == branch })
 	}
+	branchesToRebase = branchesToRebase[:i]
 
 	// We remove the target branch from consideration as we update this independently.
 	s.branchesToRebase = slices.DeleteFunc(branchesToRebase, func(b string) bool { return b == s.targetBranch })

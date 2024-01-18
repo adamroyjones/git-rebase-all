@@ -249,6 +249,12 @@ func (s *state) updateTargetBranch() error {
 	if err := pull(s.currentDir); err != nil {
 		return fmt.Errorf("pulling (dir: %s, branch: %s): %w", s.currentDir, s.targetBranch, err)
 	}
+
+	newSHA, err := branchToSHA(s.currentDir, s.targetBranch)
+	if err != nil {
+		return fmt.Errorf("updating the target branch (%s) commit SHA: %w", s.targetBranch, err)
+	}
+	s.branches[s.targetBranch] = newSHA
 	return nil
 }
 

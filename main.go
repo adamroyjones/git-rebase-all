@@ -201,22 +201,34 @@ func (s *state) decapitateAll() error {
 // those branches that are "behind" the target branch and so can be
 // fast-forwarded. We'll collapse any distinction between the two categories.
 func (s *state) constructBranchesToRebase() error {
-	branchesToRebase := sortedKeys(s.branches)
+	s.branchesToRebase := sortedKeys(s.branches)
 	targetSHA, ok := s.branches[s.targetBranch]
 	if !ok {
 		return fmt.Errorf("unable to find the branch %q in the state: this should be unreachable", s.targetBranch)
 	}
 
 	i := 0
-	for _, branch := range branchesToRebase {
+	for _, branch := range s.branchesToRebase {
+		// If the branch is a proper child of the target branch, then there is no
+		// need to rebase it.
+		{
+			children, err := s.branchChildren(s.currentDir, s.targetBranch)
+			if err != nil {
+				return err
+			}
+			if slices.Contains(children, branch) {
+				continue
+			}
+		}
+
 		children, err := s.branchChildren(s.currentDir, branch)
 		if err != nil {
 			return err
 		}
 
-		// If a branch has no children, it is a "leaf" branch.
+		// If a branch has no children, it is a "leaf" branch and should be rebased.
 		if len(children) == 0 {
-			branchesToRebase[i] = branch
+			s.branchesToRebase[i] = branch
 			i++
 			continue
 		}
@@ -229,16 +241,13 @@ func (s *state) constructBranchesToRebase() error {
 				return fmt.Errorf("unable to find the branch %q in the state: this should be unreachable", branch)
 			}
 			if branchSHA != targetSHA {
-				branchesToRebase[i] = branch
+				s.branchesToRebase[i] = branch
 				i++
 				continue
 			}
 		}
 	}
-	branchesToRebase = branchesToRebase[:i]
-
-	// We remove the target branch from consideration as we update this independently.
-	s.branchesToRebase = slices.DeleteFunc(branchesToRebase, func(b string) bool { return b == s.targetBranch })
+	s.branchesToRebase = s.branchesToRebase[:i]
 	return nil
 }
 

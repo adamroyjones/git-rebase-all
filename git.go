@@ -41,6 +41,10 @@ func branches(dir string) (map[string]string, error) {
 	return branches, nil
 }
 
+// branchChildren returns the set of "proper children" of the given branch; that
+// is, if two branches point to the same commit, then neither is a "proper
+// child" of the other.
+// TODO: If we relax from proper childhood to improper childhood, does that simplify things elsewhere?
 func (s *state) branchChildren(dir, branch string) ([]string, error) {
 	cmd := exec.Command("git", "branch", "--contains", branch, "--format=%(refname:short)")
 	cmd.Dir = dir

@@ -3,10 +3,52 @@
 This program rebases all branches across all worktreees for the current working
 directory's git repository.
 
+- [Current status](#current-status)
 - [Prerequisites](#prerequisites)
 - [Why does this program exist?](#why-does-this-program-exist?)
 - [Installing](#installing)
 - [Usage](#usage)
+
+## Current status
+
+This currently works for my purposes, but there are a few more steps to take.
+
+Firstly, my usual branching structure is such that every branch that isn't
+master has at most one "direct" child. That is, it assumes a branching structure
+like
+
+```
+x b
+|
+|
+x a
+ \
+  \
+   x master
+```
+
+and not like
+
+```
+x b   x c
+ \   /
+  \ /
+   x a
+    \
+     \
+      x master
+```
+
+When I can find the time, I'll generalise this program to handle to arbitrary
+branching trees.
+
+Secondly, the program should suspend operations, permit manual fixups, and
+support `--continue` and `--abort` flags.
+
+Thirdly, the error messages should be more helpful. Dumping the output from git
+isn't all that friendly.
+
+It could also do with an integration test suite.
 
 ## Prerequisites
 
